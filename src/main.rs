@@ -49,10 +49,15 @@ fn main() {
             Startup,
             (
                 setup_camera,
-                (load_low_density_buildings, load_medium_density_buildings),
+                (
+                    load_low_density_buildings,
+                    load_medium_density_buildings,
+                    load_skyscrapers,
+                ),
                 setup_city
                     .after(load_low_density_buildings)
-                    .after(load_medium_density_buildings),
+                    .after(load_medium_density_buildings)
+                    .after(load_skyscrapers),
             ),
         )
         .add_systems(Update, (make_visible, toggle_wireframe))
@@ -212,6 +217,56 @@ fn load_medium_density_buildings(
     commands.insert_resource(MediumDensityBuildings { meshes, materials });
 }
 
+#[derive(Resource)]
+struct SkyscraperBuildings {
+    meshes: Vec<Handle<Mesh>>,
+    materials: Vec<Handle<StandardMaterial>>,
+}
+
+impl SkyscraperBuildings {
+    fn random_building<R: RngExt>(
+        &self,
+        rng: &mut R,
+    ) -> (Mesh3d, MeshMaterial3d<StandardMaterial>) {
+        let mesh = self.meshes[rng.random_range(0..self.meshes.len())].clone();
+        let material = self.materials[rng.random_range(0..self.materials.len())].clone();
+        (Mesh3d(mesh), MeshMaterial3d(material))
+    }
+}
+
+fn load_skyscrapers(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let meshes = ["a", "b", "c", "d", "e"]
+        .iter()
+        .map(|t| {
+            asset_server.load(
+                GltfAssetLabel::Primitive {
+                    mesh: 0,
+                    primitive: 0,
+                }
+                .from_asset(format!(
+                    "kenney_city_commercial/building-skyscraper-{t}.glb"
+                )),
+            )
+        })
+        .collect::<Vec<_>>();
+    let materials = ["colormap", "variation-a", "variation-b"]
+        .iter()
+        .map(|variation| {
+            materials.add(StandardMaterial {
+                base_color_texture: Some(
+                    asset_server.load(format!("kenney_city_commercial/Textures/{variation}.png")),
+                ),
+                ..Default::default()
+            })
+        })
+        .collect::<Vec<_>>();
+    commands.insert_resource(SkyscraperBuildings { meshes, materials });
+}
+
 // fn generate_variations(
 //     scene_ready: On<SceneInstanceReady>,
 //     // mut commands: Commands,
@@ -242,6 +297,7 @@ fn setup_city(
     asset_server: Res<AssetServer>,
     low_density_buildings: Res<LowDensityBuildings>,
     medium_density_buildings: Res<MediumDensityBuildings>,
+    skyscrapers: Res<SkyscraperBuildings>,
 ) {
     let crossroad: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-crossroad-path.glb"));
@@ -251,16 +307,6 @@ fn setup_city(
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight-half.glb"));
     let tile: Handle<Scene> =
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/tile-low.glb"));
-
-    // 1.5x1.5 skyscrapers
-    let skyscrapers = ["a", "b", "c", "d", "e"]
-        .iter()
-        .map(|t| {
-            asset_server.load(GltfAssetLabel::Scene(0).from_asset(format!(
-                "kenney_city_commercial/building-skyscraper-{t}.glb"
-            )))
-        })
-        .collect::<Vec<Handle<Scene>>>();
 
     let cars = [
         "hatchback-sports",
@@ -488,13 +534,13 @@ fn setup_city(
 
             for x in 0..3 {
                 commands.spawn((
-                    SceneRoot(skyscrapers[rng.random_range(0..skyscrapers.len())].clone()),
+                    skyscrapers.random_building(&mut rng),
                     Transform::from_translation(
                         Vec3::new(1.25 + x as f32 * 1.5, 0.0, 1.25) + offset,
                     ),
                 ));
                 commands.spawn((
-                    SceneRoot(skyscrapers[rng.random_range(0..skyscrapers.len())].clone()),
+                    skyscrapers.random_building(&mut rng),
                     Transform::from_translation(
                         Vec3::new(1.25 + x as f32 * 1.5, 0.0, 2.75) + offset,
                     )
