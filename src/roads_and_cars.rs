@@ -76,15 +76,15 @@ pub fn load_cars(mut commands: Commands, asset_server: Res<AssetServer>) {
         "van",
     ]
     .iter()
-    .map(|t| asset_server.load(GltfAssetLabel::Scene(0).from_asset(format!("kenney_cars/{t}.glb"))))
+    .map(|t| asset_server.load(GltfAssetLabel::Scene(0).from_asset(format!("cars/{t}.glb"))))
     .collect::<Vec<Handle<Scene>>>();
 
-    let crossroad: Handle<Scene> = asset_server
-        .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-crossroad-path.glb"));
+    let crossroad: Handle<Scene> =
+        asset_server.load(GltfAssetLabel::Scene(0).from_asset("roads/road-crossroad-path.glb"));
     let road_straight: Handle<Scene> =
-        asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight.glb"));
-    let _straight_half: Handle<Scene> = asset_server
-        .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight-half.glb"));
+        asset_server.load(GltfAssetLabel::Scene(0).from_asset("roads/road-straight.glb"));
+    let _straight_half: Handle<Scene> =
+        asset_server.load(GltfAssetLabel::Scene(0).from_asset("roads/road-straight-half.glb"));
 
     commands.insert_resource(RoadsAndCarsAssets {
         cars,
