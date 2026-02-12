@@ -4,6 +4,7 @@ use bevy::camera::Exposure;
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 use bevy::color::palettes::css::WHITE;
 use bevy::diagnostic::FrameCount;
+use bevy::gltf::GltfMaterialName;
 use bevy::light::{AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight};
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium, ScreenSpaceReflections};
@@ -11,6 +12,7 @@ use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
 use bevy::render::RenderPlugin;
 use bevy::render::settings::{WgpuFeatures, WgpuSettings};
+use bevy::scene::SceneInstanceReady;
 use noise::{NoiseFn, OpenSimplex};
 use rand::rngs::SmallRng;
 use rand::{RngExt, SeedableRng};
@@ -45,8 +47,16 @@ fn main() {
             global: false,
             default_color: WHITE.into(),
         })
-        .add_systems(Startup, (setup_camera, setup_city))
+        .add_systems(
+            Startup,
+            (
+                setup_camera,
+                load_low_density_buildings,
+                setup_city.after(load_low_density_buildings),
+            ),
+        )
         .add_systems(Update, (make_visible, toggle_wireframe))
+        // .add_observer(generate_variations)
         .run();
 }
 
@@ -106,7 +116,84 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
     ));
 }
 
-fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
+#[derive(Resource)]
+struct LowDensityBuildings {
+    meshes: Vec<Handle<Mesh>>,
+    materials: Vec<Handle<StandardMaterial>>,
+}
+
+impl LowDensityBuildings {
+    fn random_building<R: RngExt>(
+        &self,
+        rng: &mut R,
+    ) -> (Mesh3d, MeshMaterial3d<StandardMaterial>) {
+        let mesh = self.meshes[rng.random_range(0..self.meshes.len())].clone();
+        let material = self.materials[rng.random_range(0..self.materials.len())].clone();
+        (Mesh3d(mesh), MeshMaterial3d(material))
+    }
+}
+
+fn load_low_density_buildings(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let meshes = ["b", "f", "i", "o", "u"]
+        .iter()
+        .map(|t| {
+            asset_server.load(
+                GltfAssetLabel::Primitive {
+                    mesh: 0,
+                    primitive: 0,
+                }
+                .from_asset(format!("kenney_city_suburban/building-type-{t}.glb")),
+            )
+        })
+        .collect::<Vec<_>>();
+    let materials = ["colormap", "variation-a", "variation-b", "variation-c"]
+        .iter()
+        .map(|variation| {
+            materials.add(StandardMaterial {
+                base_color_texture: Some(
+                    asset_server.load(format!("kenney_city_suburban/Textures/{variation}.png")),
+                ),
+                ..Default::default()
+            })
+        })
+        .collect::<Vec<_>>();
+    commands.insert_resource(LowDensityBuildings { meshes, materials });
+}
+
+// fn generate_variations(
+//     scene_ready: On<SceneInstanceReady>,
+//     // mut commands: Commands,
+//     children: Query<&Children>,
+//     // color_override: Query<&ColorOverride>,
+//     mesh_materials: Query<(&MeshMaterial3d<StandardMaterial>, &GltfMaterialName)>,
+//     // mut asset_materials: ResMut<Assets<StandardMaterial>>,
+// ) {
+//     info!("processing Scene Entity: {}", scene_ready.entity);
+//
+//     // Iterate over all children recursively
+//     for descendant in children.iter_descendants(scene_ready.entity) {
+//         // Get the material id and name which were created from the glTF file information
+//         let Ok((id, material_name)) = mesh_materials.get(descendant) else {
+//             continue;
+//         };
+//         // Get the material of the descendant
+//         // let Some(material) = asset_materials.get_mut(id.id()) else {
+//         //     continue;
+//         // };
+//         let name = material_name.0.as_str();
+//         info!("material: {name} {id:?}");
+//     }
+// }
+
+fn setup_city(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    low_density_buildings: Res<LowDensityBuildings>,
+) {
     let crossroad: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-crossroad-path.glb"));
     let straight: Handle<Scene> =
@@ -115,17 +202,6 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight-half.glb"));
     let tile: Handle<Scene> =
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/tile-low.glb"));
-
-    // Varying size low_density
-    let low_density_buildings = ["b", "f", "i", "o", "u"]
-        .iter()
-        .map(|t| {
-            asset_server.load(
-                GltfAssetLabel::Scene(0)
-                    .from_asset(format!("kenney_city_suburban/building-type-{t}.glb")),
-            )
-        })
-        .collect::<Vec<Handle<Scene>>>();
 
     // 1x1 medium_density
     // TODO load multiple color variations
@@ -307,17 +383,11 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
             for x in 1..=2 {
                 let x_factor = 1.8;
                 commands.spawn((
-                    SceneRoot(
-                        low_density_buildings[rng.random_range(0..low_density_buildings.len())]
-                            .clone(),
-                    ),
+                    low_density_buildings.random_building(&mut rng),
                     Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 1.25) + offset),
                 ));
                 commands.spawn((
-                    SceneRoot(
-                        low_density_buildings[rng.random_range(0..low_density_buildings.len())]
-                            .clone(),
-                    ),
+                    low_density_buildings.random_building(&mut rng),
                     Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 2.75) + offset)
                         .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
                 ));
