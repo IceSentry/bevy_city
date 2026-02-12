@@ -7,7 +7,7 @@ use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTime
 use bevy::diagnostic::FrameCount;
 use bevy::light::{AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight};
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
-use bevy::pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium, ScreenSpaceReflections};
+use bevy::pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium};
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
 use bevy::render::RenderPlugin;
@@ -226,12 +226,13 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
         },
         // Msaa::Off,
         // TemporalAntiAliasing::default(),
-        ScreenSpaceReflections::default(),
+        // Smaa::default(),
+        // ScreenSpaceReflections::default(),
     ));
 
     commands.spawn((
         DirectionalLight {
-            shadows_enabled: true,
+            shadows_enabled: false,
             illuminance: light_consts::lux::RAW_SUNLIGHT,
             ..default()
         },
