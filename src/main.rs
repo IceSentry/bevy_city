@@ -115,11 +115,11 @@ fn main() {
                     load_medium_density_buildings,
                     load_skyscrapers,
                     load_ground_tiles,
+                    load_cars,
                 )
-                    .chain(),
+                    .before(setup_city),
                 setup_city,
-            )
-                .chain(),
+            ),
         )
         .add_systems(Startup, (setup_camera, spawn_stats_ui))
         .add_systems(
@@ -274,6 +274,35 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
         Transform::from_xyz(1.0, 2.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),
         VolumetricLight,
     ));
+}
+
+#[derive(Resource)]
+struct CarAssets {
+    cars: Vec<Handle<Scene>>,
+}
+
+impl CarAssets {
+    fn random_car<R: RngExt>(&self, rng: &mut R) -> Handle<Scene> {
+        self.cars[rng.random_range(0..self.cars.len())].clone()
+    }
+}
+
+fn load_cars(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let cars = [
+        "hatchback-sports",
+        "suv",
+        "suv-luxury",
+        "sedan",
+        "sedan-sports",
+        "truck",
+        "truck-flat",
+        "van",
+    ]
+    .iter()
+    .map(|t| asset_server.load(GltfAssetLabel::Scene(0).from_asset(format!("kenney_cars/{t}.glb"))))
+    .collect::<Vec<Handle<Scene>>>();
+
+    commands.insert_resource(CarAssets { cars });
 }
 
 #[derive(Resource)]
@@ -474,9 +503,11 @@ fn load_ground_tiles(
     });
 }
 
+#[allow(clippy::too_many_arguments)]
 fn setup_city(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    car_assets: Res<CarAssets>,
     low_density_buildings: Res<LowDensityBuildings>,
     medium_density_buildings: Res<MediumDensityBuildings>,
     skyscrapers: Res<SkyscraperBuildings>,
@@ -489,20 +520,6 @@ fn setup_city(
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight.glb"));
     let _straight_half: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight-half.glb"));
-
-    let cars = [
-        "hatchback-sports",
-        "suv",
-        "suv-luxury",
-        "sedan",
-        "sedan-sports",
-        "truck",
-        "truck-flat",
-        "van",
-    ]
-    .iter()
-    .map(|t| asset_server.load(GltfAssetLabel::Scene(0).from_asset(format!("kenney_cars/{t}.glb"))))
-    .collect::<Vec<Handle<Scene>>>();
 
     let tree_small: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/tree-small.glb"));
@@ -533,7 +550,7 @@ fn setup_city(
             offset,
             &crossroad,
             &straight,
-            &cars,
+            &car_assets,
         );
 
         let ground_tile_scale = Vec3::new(4.5, 1.0, 3.0);
@@ -646,11 +663,11 @@ fn setup_city(
 fn spawn_roads_and_cars<R: RngExt>(
     commands: &mut Commands,
     stats: &mut SceneStats,
-    rng: &mut R,
+    mut rng: &mut R,
     offset: Vec3,
     crossroad: &Handle<Scene>,
     straight: &Handle<Scene>,
-    cars: &[Handle<Scene>],
+    cars: &CarAssets,
 ) {
     commands.spawn((
         SceneRoot(crossroad.clone()),
@@ -707,9 +724,8 @@ fn spawn_roads_and_cars<R: RngExt>(
     // X cars (positive direction: 0.3 to 5.2)
     for i in 0..9 {
         if rng.random::<f32>() > car_density {
-            let car = cars[rng.random_range(0..cars.len())].clone();
             commands.spawn((
-                SceneRoot(car),
+                SceneRoot(cars.random_car(&mut rng)),
                 Transform::from_translation(Vec3::new(0.75 + i as f32 * 0.5, 0.0, 0.15) + offset)
                     .with_scale(Vec3::splat(0.15))
                     .with_rotation(Quat::from_axis_angle(
@@ -726,9 +742,8 @@ fn spawn_roads_and_cars<R: RngExt>(
         }
         // X cars (negative direction: 5.2 to 0.3)
         if rng.random::<f32>() > car_density {
-            let car = cars[rng.random_range(0..cars.len())].clone();
             commands.spawn((
-                SceneRoot(car),
+                SceneRoot(cars.random_car(&mut rng)),
                 Transform::from_translation(Vec3::new(0.75 + i as f32 * 0.5, 0.0, -0.15) + offset)
                     .with_scale(Vec3::splat(0.15))
                     .with_rotation(Quat::from_axis_angle(Vec3::Y, -std::f32::consts::FRAC_PI_2)),
@@ -745,9 +760,8 @@ fn spawn_roads_and_cars<R: RngExt>(
     // Z cars (positive direction: 0.75 to 3.25)
     for i in 0..6 {
         if rng.random::<f32>() > car_density {
-            let car = cars[rng.random_range(0..cars.len())].clone();
             commands.spawn((
-                SceneRoot(car),
+                SceneRoot(cars.random_car(&mut rng)),
                 Transform::from_translation(Vec3::new(-0.15, 0.0, 0.75 + i as f32 * 0.5) + offset)
                     .with_scale(Vec3::splat(0.15)),
                 Car {
@@ -760,9 +774,8 @@ fn spawn_roads_and_cars<R: RngExt>(
         }
         // Z cars (negative direction: 3.25 to 0.75)
         if rng.random::<f32>() > car_density {
-            let car = cars[rng.random_range(0..cars.len())].clone();
             commands.spawn((
-                SceneRoot(car),
+                SceneRoot(cars.random_car(&mut rng)),
                 Transform::from_translation(Vec3::new(0.15, 0.0, 0.75 + i as f32 * 0.5) + offset)
                     .with_scale(Vec3::splat(0.15))
                     .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
