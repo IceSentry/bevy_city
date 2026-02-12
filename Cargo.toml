@@ -1,0 +1,11 @@
+[package]
+name = "bevy_city"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { version = "0.18.0", default-features = false, features = [
+    "3d",
+    "free_camera"
+] }
+rand = "0.10.0"
