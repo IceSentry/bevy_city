@@ -8,4 +8,5 @@ bevy = { version = "0.18.0", default-features = false, features = [
     "3d",
     "free_camera"
 ] }
+noise = "0.9.0"
 rand = "0.10.0"

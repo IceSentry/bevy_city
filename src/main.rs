@@ -1,3 +1,5 @@
+use core::f64;
+
 use bevy::camera::Exposure;
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 use bevy::diagnostic::FrameCount;
@@ -5,6 +7,7 @@ use bevy::light::{AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight}
 use bevy::pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium, ScreenSpaceReflections};
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
+use noise::{NoiseFn, OpenSimplex};
 use rand::rngs::SmallRng;
 use rand::{RngExt, SeedableRng};
 
@@ -43,7 +46,7 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
     // camera
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(0.0, 5.0, 9.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(0.0, 15.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
         FreeCamera::default(),
         Atmosphere::earthlike(scattering_mediums.add(ScatteringMedium::default())),
         AtmosphereSettings::default(),
@@ -128,14 +131,14 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
     let _planter: Handle<Scene> =
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/planter.glb"));
 
-    let trees = vec![tree_small.clone(), tree_large.clone()];
+    let trees = [tree_small.clone(), tree_large.clone()];
 
     let path_stones_long: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/path-stones-long.glb"));
     let _path_stones_short: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/path-stones-short.glb"));
 
-    let low_density: Vec<Handle<Scene>> = vec![
+    let low_density_buildings: Vec<Handle<Scene>> = vec![
         asset_server
             .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/building-type-b.glb")),
         asset_server
@@ -151,6 +154,8 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/fence.glb"));
 
     let mut rng = SmallRng::seed_from_u64(42);
+    // TODO better noise
+    let noise = OpenSimplex::new(rng.random());
 
     let mut spawn_city_block = |offset: Vec3| {
         commands.spawn((
@@ -205,28 +210,57 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
                 .with_scale(tile_scale),
         ));
 
-        let density = rng.random::<f32>();
-        // let density = 0.9;
+        let scale = 0.025;
+        let density =
+            noise.get([offset.x as f64 * scale, offset.z as f64 * scale, 0.0]) * 0.5 + 0.5;
 
-        if density < 0.05 {
-            // high density
+        let low_density = 0.6;
+        let medium_density = 0.7;
 
-            for x in 0..3 {
+        if density < low_density {
+            // low denisty
+            for z in 0..=8 {
                 commands.spawn((
-                    SceneRoot(skyscrapers[rng.random_range(0..skyscrapers.len())].clone()),
+                    SceneRoot(tree_small.clone()),
                     Transform::from_translation(
-                        Vec3::new(1.25 + x as f32 * 1.5, 0.0, 1.25) + offset,
+                        Vec3::new(0.75, 0.0, 0.75 + z as f32 * 0.3) + offset,
                     ),
                 ));
                 commands.spawn((
-                    SceneRoot(skyscrapers[rng.random_range(0..skyscrapers.len())].clone()),
+                    SceneRoot(tree_small.clone()),
                     Transform::from_translation(
-                        Vec3::new(1.25 + x as f32 * 1.5, 0.0, 2.75) + offset,
-                    )
-                    .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
+                        Vec3::new(4.75, 0.0, 0.75 + z as f32 * 0.3) + offset,
+                    ),
                 ));
             }
-        } else if density < 0.4 {
+            for i in 0..=6 {
+                commands.spawn((
+                    SceneRoot(fence.clone()),
+                    Transform::from_translation(
+                        Vec3::new(2.75, 0.0, 0.75 + i as f32 * 0.4) + offset,
+                    )
+                    .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
+                ));
+            }
+            for x in 1..=2 {
+                let x_factor = 1.8;
+                commands.spawn((
+                    SceneRoot(
+                        low_density_buildings[rng.random_range(0..low_density_buildings.len())]
+                            .clone(),
+                    ),
+                    Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 1.25) + offset),
+                ));
+                commands.spawn((
+                    SceneRoot(
+                        low_density_buildings[rng.random_range(0..low_density_buildings.len())]
+                            .clone(),
+                    ),
+                    Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 2.75) + offset)
+                        .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
+                ));
+            }
+        } else if density < medium_density {
             // medium dcnsity
             // TODO randomize what is spawned in the alley
 
@@ -281,50 +315,54 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
                 ));
             }
         } else {
-            // low denisty
-            let tree = trees[rng.random_range(0..2)].clone();
-            for z in 0..=8 {
+            // high density
+
+            for x in 0..3 {
                 commands.spawn((
-                    SceneRoot(tree_small.clone()),
+                    SceneRoot(skyscrapers[rng.random_range(0..skyscrapers.len())].clone()),
                     Transform::from_translation(
-                        Vec3::new(0.75, 0.0, 0.75 + z as f32 * 0.3) + offset,
+                        Vec3::new(1.25 + x as f32 * 1.5, 0.0, 1.25) + offset,
                     ),
                 ));
                 commands.spawn((
-                    SceneRoot(tree_small.clone()),
+                    SceneRoot(skyscrapers[rng.random_range(0..skyscrapers.len())].clone()),
                     Transform::from_translation(
-                        Vec3::new(4.75, 0.0, 0.75 + z as f32 * 0.3) + offset,
-                    ),
-                ));
-            }
-            for i in 0..=6 {
-                commands.spawn((
-                    SceneRoot(fence.clone()),
-                    Transform::from_translation(
-                        Vec3::new(2.75, 0.0, 0.75 + i as f32 * 0.4) + offset,
+                        Vec3::new(1.25 + x as f32 * 1.5, 0.0, 2.75) + offset,
                     )
-                    .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
-                ));
-            }
-            for x in 1..=2 {
-                let x_factor = 1.8;
-                commands.spawn((
-                    SceneRoot(low_density[rng.random_range(0..low_density.len())].clone()),
-                    Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 1.25) + offset),
-                ));
-                commands.spawn((
-                    SceneRoot(low_density[rng.random_range(0..low_density.len())].clone()),
-                    Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 2.75) + offset)
-                        .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
+                    .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
                 ));
             }
         }
     };
 
-    let size = 20;
+    let size = 10;
     for x in -size..=size {
         for z in -size..=size {
             spawn_city_block(Vec3::new(x as f32 * 5.5, 0.0, z as f32 * 4.0));
         }
     }
+
+    // {
+    //     let mut density_min = f64::MAX;
+    //     let mut density_max = f64::MIN;
+    //
+    //     use std::fmt::Write;
+    //     let size = 512;
+    //     let mut image = String::new();
+    //     let _ = writeln!(image, "P3");
+    //     let _ = writeln!(image, "{} {}", size, size);
+    //     let _ = writeln!(image, "255");
+    //     let scale = 0.005;
+    //     for y in 0..size {
+    //         for x in 0..size {
+    //             let density = perlin.get([x as f64 * scale, y as f64 * scale, 0.0]) * 0.5 + 0.5;
+    //             density_min = density_min.min(density);
+    //             density_max = density_max.max(density);
+    //             let _ = writeln!(image, "{d} {d} {d}", d = (density * 255.99) as u8);
+    //         }
+    //         // let _ = writeln!(image);
+    //     }
+    //     let _ = std::fs::write("./density.ppm", image);
+    //     println!("density range: {density_min}..{density_max}");
+    // }
 }
