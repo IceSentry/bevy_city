@@ -2,7 +2,7 @@ use core::f64;
 
 use bevy::camera::Exposure;
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
-use bevy::color::palettes::css::WHITE;
+use bevy::color::palettes::css::{DARK_GREEN, GREEN, WHITE};
 use bevy::diagnostic::FrameCount;
 use bevy::light::{AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight};
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
@@ -48,18 +48,18 @@ fn main() {
         .add_systems(
             Startup,
             (
-                setup_camera,
                 (
                     load_low_density_buildings,
                     load_medium_density_buildings,
                     load_skyscrapers,
-                ),
-                setup_city
-                    .after(load_low_density_buildings)
-                    .after(load_medium_density_buildings)
-                    .after(load_skyscrapers),
-            ),
+                    load_ground_tiles,
+                )
+                    .chain(),
+                setup_city,
+            )
+                .chain(),
         )
+        .add_systems(Startup, (setup_camera,))
         .add_systems(Update, (make_visible, toggle_wireframe))
         // .add_observer(generate_variations)
         .run();
@@ -285,6 +285,40 @@ fn load_skyscrapers(
     commands.insert_resource(SkyscraperBuildings { meshes, materials });
 }
 
+#[derive(Resource)]
+struct GroundTiles {
+    mesh: Handle<Mesh>,
+    default_material: Handle<StandardMaterial>,
+    grass_material: Handle<StandardMaterial>,
+}
+
+fn load_ground_tiles(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let mesh = asset_server.load(
+        GltfAssetLabel::Primitive {
+            mesh: 0,
+            primitive: 0,
+        }
+        .from_asset("kenney_roads/tile-low.glb"),
+    );
+    let default_material = asset_server.load(
+        GltfAssetLabel::Material {
+            index: 0,
+            is_scale_inverted: false,
+        }
+        .from_asset("kenney_roads/tile-low.glb"),
+    );
+    let grass_material = materials.add(StandardMaterial::from_color(Color::srgb_u8(97, 203, 139)));
+    commands.insert_resource(GroundTiles {
+        mesh,
+        default_material,
+        grass_material,
+    });
+}
+
 // fn generate_variations(
 //     scene_ready: On<SceneInstanceReady>,
 //     // mut commands: Commands,
@@ -316,6 +350,7 @@ fn setup_city(
     low_density_buildings: Res<LowDensityBuildings>,
     medium_density_buildings: Res<MediumDensityBuildings>,
     skyscrapers: Res<SkyscraperBuildings>,
+    ground_tile: Res<GroundTiles>,
 ) {
     let crossroad: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-crossroad-path.glb"));
@@ -323,8 +358,6 @@ fn setup_city(
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight.glb"));
     let _straight_half: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight-half.glb"));
-    let tile: Handle<Scene> =
-        asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/tile-low.glb"));
 
     let cars = [
         "hatchback-sports",
@@ -438,26 +471,40 @@ fn setup_city(
             }
         }
 
-        // TODO if city block is mid or low density use green tile
-        let tile_scale = Vec3::new(4.5, 1.0, 3.0);
-        commands.spawn((
-            SceneRoot(tile.clone()),
-            Transform::from_translation(Vec3::new(0.5, -0.5005, 0.5) + tile_scale / 2.0 + offset)
-                .with_scale(tile_scale),
-        ));
+        let ground_tile_scale = Vec3::new(4.5, 1.0, 3.0);
 
-        let scale = 0.025;
-        let density =
-            noise.get([offset.x as f64 * scale, offset.z as f64 * scale, 0.0]) * 0.5 + 0.5;
+        let noise_scale = 0.025;
+        let density = noise.get([
+            offset.x as f64 * noise_scale,
+            offset.z as f64 * noise_scale,
+            0.0,
+        ]) * 0.5
+            + 0.5;
 
         let rural = 0.45;
         let low_density = 0.6;
         let medium_density = 0.7;
 
         if density < rural {
-            // TODO
+            commands.spawn((
+                Mesh3d(ground_tile.mesh.clone()),
+                MeshMaterial3d(ground_tile.grass_material.clone()),
+                Transform::from_translation(
+                    Vec3::new(0.5, -0.5005, 0.5) + ground_tile_scale / 2.0 + offset,
+                )
+                .with_scale(ground_tile_scale),
+            ));
         } else if density < low_density {
             // low denisty
+            commands.spawn((
+                Mesh3d(ground_tile.mesh.clone()),
+                MeshMaterial3d(ground_tile.grass_material.clone()),
+                Transform::from_translation(
+                    Vec3::new(0.5, -0.5005, 0.5) + ground_tile_scale / 2.0 + offset,
+                )
+                .with_scale(ground_tile_scale),
+            ));
+
             for z in 0..=8 {
                 commands.spawn((
                     SceneRoot(tree_small.clone()),
@@ -496,6 +543,15 @@ fn setup_city(
         } else if density < medium_density {
             // medium dcnsity
             // TODO randomize what is spawned in the alley
+
+            commands.spawn((
+                Mesh3d(ground_tile.mesh.clone()),
+                MeshMaterial3d(ground_tile.default_material.clone()),
+                Transform::from_translation(
+                    Vec3::new(0.5, -0.5005, 0.5) + ground_tile_scale / 2.0 + offset,
+                )
+                .with_scale(ground_tile_scale),
+            ));
 
             // Use the same tree for the entire alley
             let tree = trees[rng.random_range(0..2)].clone();
@@ -549,6 +605,14 @@ fn setup_city(
             }
         } else {
             // high density
+            commands.spawn((
+                Mesh3d(ground_tile.mesh.clone()),
+                MeshMaterial3d(ground_tile.default_material.clone()),
+                Transform::from_translation(
+                    Vec3::new(0.5, -0.5005, 0.5) + ground_tile_scale / 2.0 + offset,
+                )
+                .with_scale(ground_tile_scale),
+            ));
 
             for x in 0..3 {
                 commands.spawn((
