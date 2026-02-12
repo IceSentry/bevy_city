@@ -33,7 +33,7 @@ pub fn load_medium_density_buildings(
                     mesh: 0,
                     primitive: 0,
                 }
-                .from_asset(format!("kenney_city_commercial/building-{t}.glb")),
+                .from_asset(format!("medium_density/building-{t}.glb")),
             )
         })
         .collect::<Vec<_>>();
@@ -43,7 +43,7 @@ pub fn load_medium_density_buildings(
         .map(|variation| {
             materials.add(StandardMaterial {
                 base_color_texture: Some(
-                    asset_server.load(format!("kenney_city_commercial/Textures/{variation}.png")),
+                    asset_server.load(format!("medium_density/Textures/{variation}.png")),
                 ),
                 ..Default::default()
             })
