@@ -10,8 +10,8 @@ use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium, ScreenSpaceReflections};
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
-use bevy::render::settings::{WgpuFeatures, WgpuSettings};
 use bevy::render::RenderPlugin;
+use bevy::render::settings::{WgpuFeatures, WgpuSettings};
 use noise::{NoiseFn, OpenSimplex};
 use rand::rngs::SmallRng;
 use rand::{RngExt, SeedableRng};
@@ -585,6 +585,7 @@ fn setup_city(
                 .with_scale(Vec3::new(3.0, 1.0, 1.0))
                 .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
         ));
+        stats.road_segments += 1;
 
         let z_segment_start = Vec3::new(-0.15, 0.0, 0.75) + offset;
         let z_segment_end = Vec3::new(-0.15, 0.0, 3.25) + offset;
