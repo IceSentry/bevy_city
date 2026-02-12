@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.18.0", default-features = false, features = [
+bevy = { version = "0.18", default-features = false, features = [
     "3d",
-    "free_camera"
+    "free_camera",
+    "bevy_dev_tools"
 ] }
 noise = "0.9.0"
 rand = "0.10.0"
