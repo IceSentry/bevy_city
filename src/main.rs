@@ -73,7 +73,7 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
     // camera
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(0.0, 15.0, 50.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
         FreeCamera::default(),
         Atmosphere::earthlike(scattering_mediums.add(ScatteringMedium::default())),
         AtmosphereSettings::default(),
@@ -111,7 +111,7 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-crossroad-path.glb"));
     let straight: Handle<Scene> =
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight.glb"));
-    let straight_half: Handle<Scene> = asset_server
+    let _straight_half: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight-half.glb"));
     let tile: Handle<Scene> =
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/tile-low.glb"));
@@ -148,6 +148,20 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
             )))
         })
         .collect::<Vec<Handle<Scene>>>();
+
+    let cars = [
+        "hatchback-sports",
+        "suv",
+        "suv-luxury",
+        "sedan",
+        "sedan-sports",
+        "truck",
+        "truck-flat",
+        "van",
+    ]
+    .iter()
+    .map(|t| asset_server.load(GltfAssetLabel::Scene(0).from_asset(format!("kenney_cars/{t}.glb"))))
+    .collect::<Vec<Handle<Scene>>>();
 
     let tree_small: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/tree-small.glb"));
@@ -190,6 +204,62 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
                 .with_scale(Vec3::new(3.0, 1.0, 1.0))
                 .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
         ));
+
+        // TODO spawn cars based on housing density
+        let car_density = 0.75;
+        // X cars
+        for i in 0..9 {
+            if rng.random::<f32>() > car_density {
+                let car = cars[rng.random_range(0..cars.len())].clone();
+                commands.spawn((
+                    SceneRoot(car),
+                    Transform::from_translation(
+                        Vec3::new(0.75 + i as f32 * 0.5, 0.0, 0.15) + offset,
+                    )
+                    .with_scale(Vec3::splat(0.15))
+                    .with_rotation(Quat::from_axis_angle(
+                        Vec3::Y,
+                        3.0 * std::f32::consts::FRAC_PI_2,
+                    )),
+                ));
+            }
+            if rng.random::<f32>() > car_density {
+                let car = cars[rng.random_range(0..cars.len())].clone();
+                commands.spawn((
+                    SceneRoot(car),
+                    Transform::from_translation(
+                        Vec3::new(0.75 + i as f32 * 0.5, 0.0, -0.15) + offset,
+                    )
+                    .with_scale(Vec3::splat(0.15))
+                    .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
+                ));
+            }
+        }
+
+        // Z cars
+        for i in 0..6 {
+            if rng.random::<f32>() > car_density {
+                let car = cars[rng.random_range(0..cars.len())].clone();
+                commands.spawn((
+                    SceneRoot(car),
+                    Transform::from_translation(
+                        Vec3::new(-0.15, 0.0, 0.75 + i as f32 * 0.5) + offset,
+                    )
+                    .with_scale(Vec3::splat(0.15)),
+                ));
+            }
+            if rng.random::<f32>() > car_density {
+                let car = cars[rng.random_range(0..cars.len())].clone();
+                commands.spawn((
+                    SceneRoot(car),
+                    Transform::from_translation(
+                        Vec3::new(0.15, 0.0, 0.75 + i as f32 * 0.5) + offset,
+                    )
+                    .with_scale(Vec3::splat(0.15))
+                    .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
+                ));
+            }
+        }
 
         // TODO if city block is mid or low density use green tile
         let tile_scale = Vec3::new(4.5, 1.0, 3.0);
