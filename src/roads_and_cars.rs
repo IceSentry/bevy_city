@@ -52,11 +52,13 @@ pub fn move_cars(
 }
 
 #[derive(Resource)]
-pub struct CarAssets {
+pub struct RoadsAndCarsAssets {
     cars: Vec<Handle<Scene>>,
+    pub crossroad: Handle<Scene>,
+    pub road_straight: Handle<Scene>,
 }
 
-impl CarAssets {
+impl RoadsAndCarsAssets {
     fn random_car<R: RngExt>(&self, rng: &mut R) -> Handle<Scene> {
         self.cars[rng.random_range(0..self.cars.len())].clone()
     }
@@ -77,7 +79,18 @@ pub fn load_cars(mut commands: Commands, asset_server: Res<AssetServer>) {
     .map(|t| asset_server.load(GltfAssetLabel::Scene(0).from_asset(format!("kenney_cars/{t}.glb"))))
     .collect::<Vec<Handle<Scene>>>();
 
-    commands.insert_resource(CarAssets { cars });
+    let crossroad: Handle<Scene> = asset_server
+        .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-crossroad-path.glb"));
+    let road_straight: Handle<Scene> =
+        asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight.glb"));
+    let _straight_half: Handle<Scene> = asset_server
+        .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight-half.glb"));
+
+    commands.insert_resource(RoadsAndCarsAssets {
+        cars,
+        crossroad,
+        road_straight,
+    });
 }
 
 pub fn spawn_roads_and_cars<R: RngExt>(
@@ -85,19 +98,17 @@ pub fn spawn_roads_and_cars<R: RngExt>(
     stats: &mut SceneStats,
     mut rng: &mut R,
     offset: Vec3,
-    crossroad: &Handle<Scene>,
-    straight: &Handle<Scene>,
-    cars: &CarAssets,
+    assets: &RoadsAndCarsAssets,
 ) {
     commands.spawn((
-        SceneRoot(crossroad.clone()),
+        SceneRoot(assets.crossroad.clone()),
         Transform::from_translation(offset),
     ));
     stats.road_segments += 1;
 
     // X roads
     commands.spawn((
-        SceneRoot(straight.clone()),
+        SceneRoot(assets.road_straight.clone()),
         Transform::from_translation(Vec3::new(2.75, 0.0, 0.0) + offset)
             .with_scale(Vec3::new(4.5, 1.0, 1.0)),
     ));
@@ -119,7 +130,7 @@ pub fn spawn_roads_and_cars<R: RngExt>(
 
     // Z roads
     commands.spawn((
-        SceneRoot(straight.clone()),
+        SceneRoot(assets.road_straight.clone()),
         Transform::from_translation(Vec3::new(0.0, 0.0, 2.0) + offset)
             .with_scale(Vec3::new(3.0, 1.0, 1.0))
             .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
@@ -145,7 +156,7 @@ pub fn spawn_roads_and_cars<R: RngExt>(
     for i in 0..9 {
         if rng.random::<f32>() > car_density {
             commands.spawn((
-                SceneRoot(cars.random_car(&mut rng)),
+                SceneRoot(assets.random_car(&mut rng)),
                 Transform::from_translation(Vec3::new(0.75 + i as f32 * 0.5, 0.0, 0.15) + offset)
                     .with_scale(Vec3::splat(0.15))
                     .with_rotation(Quat::from_axis_angle(
@@ -163,7 +174,7 @@ pub fn spawn_roads_and_cars<R: RngExt>(
         // X cars (negative direction: 5.2 to 0.3)
         if rng.random::<f32>() > car_density {
             commands.spawn((
-                SceneRoot(cars.random_car(&mut rng)),
+                SceneRoot(assets.random_car(&mut rng)),
                 Transform::from_translation(Vec3::new(0.75 + i as f32 * 0.5, 0.0, -0.15) + offset)
                     .with_scale(Vec3::splat(0.15))
                     .with_rotation(Quat::from_axis_angle(Vec3::Y, -std::f32::consts::FRAC_PI_2)),
@@ -181,7 +192,7 @@ pub fn spawn_roads_and_cars<R: RngExt>(
     for i in 0..6 {
         if rng.random::<f32>() > car_density {
             commands.spawn((
-                SceneRoot(cars.random_car(&mut rng)),
+                SceneRoot(assets.random_car(&mut rng)),
                 Transform::from_translation(Vec3::new(-0.15, 0.0, 0.75 + i as f32 * 0.5) + offset)
                     .with_scale(Vec3::splat(0.15)),
                 Car {
@@ -195,7 +206,7 @@ pub fn spawn_roads_and_cars<R: RngExt>(
         // Z cars (negative direction: 3.25 to 0.75)
         if rng.random::<f32>() > car_density {
             commands.spawn((
-                SceneRoot(cars.random_car(&mut rng)),
+                SceneRoot(assets.random_car(&mut rng)),
                 Transform::from_translation(Vec3::new(0.15, 0.0, 0.75 + i as f32 * 0.5) + offset)
                     .with_scale(Vec3::splat(0.15))
                     .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),

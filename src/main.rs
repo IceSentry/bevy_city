@@ -20,7 +20,7 @@ use crate::low_density::{LowDensityBuildings, load_low_density_buildings, spawn_
 use crate::medium_density::{
     MediumDensityBuildings, load_medium_density_buildings, spawn_medium_density,
 };
-use crate::roads_and_cars::{CarAssets, load_cars, move_cars, spawn_roads_and_cars};
+use crate::roads_and_cars::{RoadsAndCarsAssets, load_cars, move_cars, spawn_roads_and_cars};
 use crate::skyscrapers::{SkyscraperBuildings, load_skyscrapers, spawn_high_density};
 
 mod low_density;
@@ -278,20 +278,13 @@ fn load_ground_tiles(
 fn setup_city(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    car_assets: Res<CarAssets>,
+    roads_and_cars_assets: Res<RoadsAndCarsAssets>,
     low_density_buildings: Res<LowDensityBuildings>,
     medium_density_buildings: Res<MediumDensityBuildings>,
     skyscrapers: Res<SkyscraperBuildings>,
     ground_tile: Res<GroundTiles>,
     mut stats: ResMut<SceneStats>,
 ) {
-    let crossroad: Handle<Scene> = asset_server
-        .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-crossroad-path.glb"));
-    let straight: Handle<Scene> =
-        asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight.glb"));
-    let _straight_half: Handle<Scene> = asset_server
-        .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-straight-half.glb"));
-
     let tree_small: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/tree-small.glb"));
     let tree_large: Handle<Scene> = asset_server
@@ -319,9 +312,7 @@ fn setup_city(
             &mut stats,
             &mut rng,
             offset,
-            &crossroad,
-            &straight,
-            &car_assets,
+            &roads_and_cars_assets,
         );
 
         let ground_tile_scale = Vec3::new(4.5, 1.0, 3.0);
