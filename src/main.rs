@@ -116,40 +116,38 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
     let tile: Handle<Scene> =
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/tile-low.glb"));
 
-    // 1x1 buildings
-    let buildings: Vec<Handle<Scene>> = vec![
-        asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_commercial/building-a.glb")),
-        asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_commercial/building-b.glb")),
-        asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_commercial/building-c.glb")),
-        asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_commercial/building-d.glb")),
-        asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_commercial/building-f.glb")),
-        asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_commercial/building-g.glb")),
-        asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_commercial/building-h.glb")),
-    ];
-    let skyscrapers: Vec<Handle<Scene>> = vec![
-        asset_server.load(
-            GltfAssetLabel::Scene(0).from_asset("kenney_city_commercial/building-skyscraper-a.glb"),
-        ),
-        asset_server.load(
-            GltfAssetLabel::Scene(0).from_asset("kenney_city_commercial/building-skyscraper-b.glb"),
-        ),
-        asset_server.load(
-            GltfAssetLabel::Scene(0).from_asset("kenney_city_commercial/building-skyscraper-c.glb"),
-        ),
-        asset_server.load(
-            GltfAssetLabel::Scene(0).from_asset("kenney_city_commercial/building-skyscraper-d.glb"),
-        ),
-        asset_server.load(
-            GltfAssetLabel::Scene(0).from_asset("kenney_city_commercial/building-skyscraper-e.glb"),
-        ),
-    ];
+    // Varying size low_density
+    let low_density_buildings = ["b", "f", "i", "o", "u"]
+        .iter()
+        .map(|t| {
+            asset_server.load(
+                GltfAssetLabel::Scene(0)
+                    .from_asset(format!("kenney_city_suburban/building-type-{t}.glb")),
+            )
+        })
+        .collect::<Vec<Handle<Scene>>>();
+
+    // 1x1 medium_density
+    // TODO load multiple color variations
+    let medium_density_buildings = ["a", "b", "c", "d", "f", "g", "h"]
+        .iter()
+        .map(|t| {
+            asset_server.load(
+                GltfAssetLabel::Scene(0)
+                    .from_asset(format!("kenney_city_commercial/building-{t}.glb")),
+            )
+        })
+        .collect::<Vec<Handle<Scene>>>();
+
+    // 1.5x1.5 skyscrapers
+    let skyscrapers = ["a", "b", "c", "d", "e"]
+        .iter()
+        .map(|t| {
+            asset_server.load(GltfAssetLabel::Scene(0).from_asset(format!(
+                "kenney_city_commercial/building-skyscraper-{t}.glb"
+            )))
+        })
+        .collect::<Vec<Handle<Scene>>>();
 
     let tree_small: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/tree-small.glb"));
@@ -165,18 +163,6 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
     let _path_stones_short: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/path-stones-short.glb"));
 
-    let low_density_buildings: Vec<Handle<Scene>> = vec![
-        asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/building-type-b.glb")),
-        asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/building-type-f.glb")),
-        asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/building-type-i.glb")),
-        asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/building-type-o.glb")),
-        asset_server
-            .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/building-type-u.glb")),
-    ];
     let fence: Handle<Scene> =
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/fence.glb"));
 
@@ -274,7 +260,11 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
             let x_factor = 0.9;
             for x in 1..=5 {
                 commands.spawn((
-                    SceneRoot(buildings[rng.random_range(0..buildings.len())].clone()),
+                    SceneRoot(
+                        medium_density_buildings
+                            [rng.random_range(0..medium_density_buildings.len())]
+                        .clone(),
+                    ),
                     Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 1.0) + offset),
                 ));
                 for tree_x in 0..=1 {
@@ -296,7 +286,11 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ));
                 }
                 commands.spawn((
-                    SceneRoot(buildings[rng.random_range(0..buildings.len())].clone()),
+                    SceneRoot(
+                        medium_density_buildings
+                            [rng.random_range(0..medium_density_buildings.len())]
+                        .clone(),
+                    ),
                     Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 3.0) + offset)
                         .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
                 ));
@@ -338,7 +332,7 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
         }
     };
 
-    let size = 10;
+    let size = 20;
     for x in -size..=size {
         for z in -size..=size {
             spawn_city_block(Vec3::new(x as f32 * 5.5, 0.0, z as f32 * 4.0));
