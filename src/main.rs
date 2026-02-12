@@ -576,7 +576,7 @@ fn setup_city(
                     .with_scale(Vec3::splat(0.15))
                     .with_rotation(Quat::from_axis_angle(
                         Vec3::Y,
-                        3.0 * std::f32::consts::FRAC_PI_2,
+                        3.0 * -std::f32::consts::FRAC_PI_2,
                     )),
                     Car {
                         segment_entity: x_segment_entity,
@@ -595,7 +595,7 @@ fn setup_city(
                         Vec3::new(0.75 + i as f32 * 0.5, 0.0, -0.15) + offset,
                     )
                     .with_scale(Vec3::splat(0.15))
-                    .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
+                    .with_rotation(Quat::from_axis_angle(Vec3::Y, -std::f32::consts::FRAC_PI_2)),
                     Car {
                         segment_entity: x_segment_neg_entity,
                         speed: 2.0,
