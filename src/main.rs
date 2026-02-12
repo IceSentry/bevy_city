@@ -183,22 +183,31 @@ fn spawn_stats_ui(mut commands: Commands) {
         });
 }
 
+fn format_large_number(value: u32) -> String {
+    let mut s = String::new();
+    for (i, char) in value.to_string().chars().rev().enumerate() {
+        if i % 3 == 0 && i != 0 {
+            s.insert(0, ',');
+        }
+        s.insert(0, char);
+    }
+    s
+}
+
 fn update_stats_ui(
-    mut stats_text: Query<&mut Text, With<StatsText>>,
+    mut stats_text: Single<&mut Text, With<StatsText>>,
     stats: Res<SceneStats>,
     entities: Query<Entity>,
 ) {
-    for mut text in stats_text.iter_mut() {
-        let total_entities = entities.iter().count();
-        text.0 = format!(
-            "Cars: {}\nLow Density: {}\nMedium Density: {}\nSkyscrapers: {}\nTotal Entities: {}",
-            stats.cars_spawned,
-            stats.low_density_buildings,
-            stats.medium_density_buildings,
-            stats.skyscrapers,
-            total_entities
-        );
-    }
+    let total_entities = entities.iter().count();
+    stats_text.0 = format!(
+        "Cars: {}\nLow Density: {}\nMedium Density: {}\nSkyscrapers: {}\nTotal Entities: {}",
+        format_large_number(stats.cars_spawned),
+        format_large_number(stats.low_density_buildings),
+        format_large_number(stats.medium_density_buildings),
+        format_large_number(stats.skyscrapers),
+        format_large_number(total_entities as u32)
+    );
 }
 
 fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<ScatteringMedium>>) {
