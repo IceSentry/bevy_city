@@ -239,7 +239,7 @@ fn load_skyscrapers(
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let meshes = ["a", "b", "c", "d", "e"]
+    let mut meshes = ["a", "b", "c", "d", "e"]
         .iter()
         .map(|t| {
             asset_server.load(
@@ -253,6 +253,24 @@ fn load_skyscrapers(
             )
         })
         .collect::<Vec<_>>();
+    meshes.push(
+        asset_server.load(
+            GltfAssetLabel::Primitive {
+                mesh: 0,
+                primitive: 0,
+            }
+            .from_asset("kenney_city_commercial/building-m.glb"),
+        ),
+    );
+    meshes.push(
+        asset_server.load(
+            GltfAssetLabel::Primitive {
+                mesh: 0,
+                primitive: 0,
+            }
+            .from_asset("kenney_city_commercial/building-l.glb"),
+        ),
+    );
     let materials = ["colormap", "variation-a", "variation-b"]
         .iter()
         .map(|variation| {
