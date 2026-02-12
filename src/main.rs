@@ -2,11 +2,15 @@ use core::f64;
 
 use bevy::camera::Exposure;
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
+use bevy::color::palettes::css::WHITE;
 use bevy::diagnostic::FrameCount;
 use bevy::light::{AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight};
+use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium, ScreenSpaceReflections};
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
+use bevy::render::RenderPlugin;
+use bevy::render::settings::{WgpuFeatures, WgpuSettings};
 use noise::{NoiseFn, OpenSimplex};
 use rand::rngs::SmallRng;
 use rand::{RngExt, SeedableRng};
@@ -14,21 +18,35 @@ use rand::{RngExt, SeedableRng};
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "bevy_city".into(),
-                    resolution: (1920, 1080).into(),
-                    visible: false,
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "bevy_city".into(),
+                        resolution: (1920, 1080).into(),
+                        visible: false,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(RenderPlugin {
+                    render_creation: WgpuSettings {
+                        features: WgpuFeatures::POLYGON_MODE_LINE,
+                        ..default()
+                    }
+                    .into(),
                     ..default()
                 }),
-                ..default()
-            }),
             FreeCameraPlugin,
+            WireframePlugin::default(),
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(GlobalAmbientLight::NONE)
+        .insert_resource(WireframeConfig {
+            global: false,
+            default_color: WHITE.into(),
+        })
         .add_systems(Startup, (setup_camera, setup_city))
-        .add_systems(Update, make_visible)
+        .add_systems(Update, (make_visible, toggle_wireframe))
         .run();
 }
 
@@ -39,6 +57,15 @@ fn make_visible(mut window: Single<&mut Window>, frames: Res<FrameCount>) {
         // Alternatively, you could toggle the visibility in Startup.
         // It will work, but it will have one white frame before it starts rendering
         window.visible = true;
+    }
+}
+
+fn toggle_wireframe(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut config: ResMut<WireframeConfig>,
+) {
+    if keyboard_input.just_pressed(KeyCode::KeyZ) {
+        config.global = !config.global;
     }
 }
 
