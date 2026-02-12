@@ -293,10 +293,10 @@ fn setup_city(
     let trees = [tree_small.clone(), tree_large.clone()];
 
     let path_stones_long: Handle<Scene> = asset_server
-        .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/path-stones-long.glb"));
+        .load(GltfAssetLabel::Scene(0).from_asset("city_suburban/path-stones-long.glb"));
 
     let fence: Handle<Scene> =
-        asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/fence.glb"));
+        asset_server.load(GltfAssetLabel::Scene(0).from_asset("city_suburban/fence.glb"));
 
     let mut rng = SmallRng::seed_from_u64(42);
     // TODO better noise
