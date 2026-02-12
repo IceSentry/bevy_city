@@ -25,7 +25,7 @@ pub fn load_low_density_buildings(
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let meshes = ["b", "f", "i", "o", "u"]
+    let meshes = ["b", "c", "d", "e", "f", "g", "h", "i", "k", "l", "o", "u"]
         .iter()
         .map(|t| {
             asset_server.load(
@@ -33,7 +33,7 @@ pub fn load_low_density_buildings(
                     mesh: 0,
                     primitive: 0,
                 }
-                .from_asset(format!("kenney_city_suburban/building-type-{t}.glb")),
+                .from_asset(format!("low_density/building-type-{t}.glb")),
             )
         })
         .collect::<Vec<_>>();
@@ -42,7 +42,7 @@ pub fn load_low_density_buildings(
         .map(|variation| {
             materials.add(StandardMaterial {
                 base_color_texture: Some(
-                    asset_server.load(format!("kenney_city_suburban/Textures/{variation}.png")),
+                    asset_server.load(format!("low_density/Textures/{variation}.png")),
                 ),
                 ..Default::default()
             })
