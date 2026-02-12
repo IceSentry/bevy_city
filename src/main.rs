@@ -1,9 +1,6 @@
-use std::f32::consts;
-
-use bevy::anti_alias::taa::TemporalAntiAliasing;
 use bevy::camera::Exposure;
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
-use bevy::core_pipeline::tonemapping::Tonemapping;
+use bevy::diagnostic::FrameCount;
 use bevy::light::{AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight};
 use bevy::pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium, ScreenSpaceReflections};
 use bevy::post_process::bloom::Bloom;
@@ -13,11 +10,33 @@ use rand::{RngExt, SeedableRng};
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, FreeCameraPlugin))
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "bevy_city".into(),
+                    resolution: (1920, 1080).into(),
+                    visible: false,
+                    ..default()
+                }),
+                ..default()
+            }),
+            FreeCameraPlugin,
+        ))
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(GlobalAmbientLight::NONE)
         .add_systems(Startup, (setup_camera, setup_city))
+        .add_systems(Update, make_visible)
         .run();
+}
+
+fn make_visible(mut window: Single<&mut Window>, frames: Res<FrameCount>) {
+    // The delay may be different for your app or system.
+    if frames.0 == 3 {
+        // At this point the gpu is ready to show the app so we can make the window visible.
+        // Alternatively, you could toggle the visibility in Startup.
+        // It will work, but it will have one white frame before it starts rendering
+        window.visible = true;
+    }
 }
 
 fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<ScatteringMedium>>) {
@@ -57,7 +76,6 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
     ));
 }
 
-#[allow(clippy::collapsible_else_if)]
 fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
     let crossroad: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-crossroad-path.glb"));
