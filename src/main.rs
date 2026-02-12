@@ -234,7 +234,7 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
     // camera
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(0.0, 5.0, 10.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::from_xyz(15.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
         FreeCamera::default(),
         Atmosphere::earthlike(scattering_mediums.add(ScatteringMedium::default())),
         AtmosphereSettings::default(),
