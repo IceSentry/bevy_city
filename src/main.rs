@@ -9,8 +9,8 @@ use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium, ScreenSpaceReflections};
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
-use bevy::render::settings::{WgpuFeatures, WgpuSettings};
 use bevy::render::RenderPlugin;
+use bevy::render::settings::{WgpuFeatures, WgpuSettings};
 use noise::{NoiseFn, OpenSimplex};
 use rand::rngs::SmallRng;
 use rand::{RngExt, SeedableRng};
@@ -45,6 +45,17 @@ impl RoadSegment {
     }
 }
 
+#[derive(Resource, Default)]
+struct SceneStats {
+    cars_spawned: u32,
+    low_density_buildings: u32,
+    medium_density_buildings: u32,
+    skyscrapers: u32,
+}
+
+#[derive(Component)]
+struct StatsText;
+
 fn main() {
     App::new()
         .add_plugins((
@@ -75,6 +86,7 @@ fn main() {
             global: false,
             default_color: WHITE.into(),
         })
+        .init_resource::<SceneStats>()
         .add_systems(
             Startup,
             (
@@ -89,8 +101,11 @@ fn main() {
             )
                 .chain(),
         )
-        .add_systems(Startup, (setup_camera,))
-        .add_systems(Update, (make_visible, toggle_wireframe, move_cars))
+        .add_systems(Startup, (setup_camera, spawn_stats_ui))
+        .add_systems(
+            Update,
+            (make_visible, toggle_wireframe, move_cars, update_stats_ui),
+        )
         // .add_observer(generate_variations)
         .run();
 }
@@ -131,6 +146,58 @@ fn move_cars(
             let new_pos = segment.start + segment.direction * segment.length * progress;
             transform.translation = new_pos;
         }
+    }
+}
+
+fn spawn_stats_ui(mut commands: Commands) {
+    commands
+        .spawn(Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            ..default()
+        })
+        .with_children(|parent| {
+            parent
+                .spawn((
+                    Node {
+                        position_type: PositionType::Absolute,
+                        bottom: Val::Px(10.0),
+                        left: Val::Px(10.0),
+                        // margin: UiRect::all(Val::Px(25.0)),
+                        padding: UiRect::all(Val::Px(10.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.75)),
+                ))
+                .with_children(|parent| {
+                    parent.spawn((
+                        Text::new(""),
+                        TextFont {
+                            font_size: 20.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                        StatsText,
+                    ));
+                });
+        });
+}
+
+fn update_stats_ui(
+    mut stats_text: Query<&mut Text, With<StatsText>>,
+    stats: Res<SceneStats>,
+    entities: Query<Entity>,
+) {
+    for mut text in stats_text.iter_mut() {
+        let total_entities = entities.iter().count();
+        text.0 = format!(
+            "Cars: {}\nLow Density: {}\nMedium Density: {}\nSkyscrapers: {}\nTotal Entities: {}",
+            stats.cars_spawned,
+            stats.low_density_buildings,
+            stats.medium_density_buildings,
+            stats.skyscrapers,
+            total_entities
+        );
     }
 }
 
@@ -401,6 +468,7 @@ fn setup_city(
     medium_density_buildings: Res<MediumDensityBuildings>,
     skyscrapers: Res<SkyscraperBuildings>,
     ground_tile: Res<GroundTiles>,
+    mut stats: ResMut<SceneStats>,
 ) {
     let crossroad: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_roads/road-crossroad-path.glb"));
@@ -507,6 +575,7 @@ fn setup_city(
                         distance_traveled: i as f32 * 0.55,
                     },
                 ));
+                stats.cars_spawned += 1;
             }
             // X cars (negative direction: 5.2 to 0.3)
             if rng.random::<f32>() > car_density {
@@ -524,6 +593,7 @@ fn setup_city(
                         distance_traveled: i as f32 * 0.55,
                     },
                 ));
+                stats.cars_spawned += 1;
             }
         }
 
@@ -543,6 +613,7 @@ fn setup_city(
                         distance_traveled: i as f32 * 0.5,
                     },
                 ));
+                stats.cars_spawned += 1;
             }
             // Z cars (negative direction: 3.25 to 0.75)
             if rng.random::<f32>() > car_density {
@@ -560,6 +631,7 @@ fn setup_city(
                         distance_traveled: i as f32 * 0.5,
                     },
                 ));
+                stats.cars_spawned += 1;
             }
         }
 
@@ -626,11 +698,13 @@ fn setup_city(
                     low_density_buildings.random_building(&mut rng),
                     Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 1.25) + offset),
                 ));
+                stats.low_density_buildings += 1;
                 commands.spawn((
                     low_density_buildings.random_building(&mut rng),
                     Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 2.75) + offset)
                         .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
                 ));
+                stats.low_density_buildings += 1;
             }
         } else if density < medium_density {
             // medium dcnsity
@@ -655,6 +729,7 @@ fn setup_city(
                     medium_density_buildings.random_building(&mut rng),
                     Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 1.0) + offset),
                 ));
+                stats.medium_density_buildings += 1;
                 for tree_x in 0..=1 {
                     let tree_x = tree_x as f32 * 0.5;
                     if x == 5 && tree_x == 0.5 {
@@ -678,6 +753,7 @@ fn setup_city(
                     Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 3.0) + offset)
                         .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
                 ));
+                stats.medium_density_buildings += 1;
             }
 
             // path
@@ -713,6 +789,7 @@ fn setup_city(
                         Vec3::new(1.25 + x as f32 * 1.5, 0.0, 1.25) + offset,
                     ),
                 ));
+                stats.skyscrapers += 1;
                 commands.spawn((
                     skyscrapers.random_building(&mut rng),
                     Transform::from_translation(
@@ -720,6 +797,7 @@ fn setup_city(
                     )
                     .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
                 ));
+                stats.skyscrapers += 1;
             }
         }
     };
