@@ -52,6 +52,8 @@ struct SceneStats {
     low_density_buildings: u32,
     medium_density_buildings: u32,
     skyscrapers: u32,
+    road_segments: u32,
+    trees: u32,
 }
 
 #[derive(Component)]
@@ -221,11 +223,21 @@ fn update_stats_ui(
 ) {
     let total_entities = entities.iter().count();
     stats_text.0 = format!(
-        "Cars: {}\nLow Density: {}\nMedium Density: {}\nSkyscrapers: {}\nTotal Entities: {}",
+        "Cars: {}\nLow Density: {}\nMedium Density: {}\nSkyscrapers: {}\nRoad Segments: {}\nTrees: {}\nTotal spawned mesh: {}\nTotal Entities: {}",
         format_large_number(stats.cars_spawned),
         format_large_number(stats.low_density_buildings),
         format_large_number(stats.medium_density_buildings),
         format_large_number(stats.skyscrapers),
+        format_large_number(stats.road_segments),
+        format_large_number(stats.trees),
+        format_large_number(
+            stats.cars_spawned
+                + stats.low_density_buildings
+                + stats.medium_density_buildings
+                + stats.skyscrapers
+                + stats.road_segments
+                + stats.trees
+        ),
         format_large_number(total_entities as u32)
     );
 }
@@ -546,6 +558,7 @@ fn setup_city(
             SceneRoot(crossroad.clone()),
             Transform::from_translation(offset),
         ));
+        stats.road_segments += 1;
 
         // X roads
         commands.spawn((
@@ -553,6 +566,7 @@ fn setup_city(
             Transform::from_translation(Vec3::new(2.75, 0.0, 0.0) + offset)
                 .with_scale(Vec3::new(4.5, 1.0, 1.0)),
         ));
+        stats.road_segments += 1;
 
         let x_segment_start = Vec3::new(0.3, 0.0, 0.15) + offset;
         let x_segment_end = Vec3::new(5.2, 0.0, 0.15) + offset;
@@ -705,12 +719,14 @@ fn setup_city(
                         Vec3::new(0.75, 0.0, 0.75 + z as f32 * 0.3) + offset,
                     ),
                 ));
+                stats.trees += 1;
                 commands.spawn((
                     SceneRoot(tree_small.clone()),
                     Transform::from_translation(
                         Vec3::new(4.75, 0.0, 0.75 + z as f32 * 0.3) + offset,
                     ),
                 ));
+                stats.trees += 1;
             }
             for i in 0..=6 {
                 commands.spawn((
@@ -770,12 +786,14 @@ fn setup_city(
                             Vec3::new(tree_x + x as f32 * x_factor, 0.0, 1.75) + offset,
                         ),
                     ));
+                    stats.trees += 1;
                     commands.spawn((
                         SceneRoot(tree.clone()),
                         Transform::from_translation(
                             Vec3::new(tree_x + x as f32 * x_factor, 0.0, 2.25) + offset,
                         ),
                     ));
+                    stats.trees += 1;
                 }
                 commands.spawn((
                     medium_density_buildings.random_building(&mut rng),
