@@ -33,9 +33,7 @@ pub fn load_skyscrapers(
                     mesh: 0,
                     primitive: 0,
                 }
-                .from_asset(format!(
-                    "kenney_city_commercial/building-skyscraper-{t}.glb"
-                )),
+                .from_asset(format!("high_density/building-skyscraper-{t}.glb")),
             )
         })
         .collect::<Vec<_>>();
@@ -45,7 +43,7 @@ pub fn load_skyscrapers(
                 mesh: 0,
                 primitive: 0,
             }
-            .from_asset("kenney_city_commercial/building-m.glb"),
+            .from_asset("high_density/building-m.glb"),
         ),
     );
     meshes.push(
@@ -54,7 +52,7 @@ pub fn load_skyscrapers(
                 mesh: 0,
                 primitive: 0,
             }
-            .from_asset("kenney_city_commercial/building-l.glb"),
+            .from_asset("high_density/building-l.glb"),
         ),
     );
     let materials = ["colormap", "variation-a", "variation-b"]
@@ -62,7 +60,7 @@ pub fn load_skyscrapers(
         .map(|variation| {
             materials.add(StandardMaterial {
                 base_color_texture: Some(
-                    asset_server.load(format!("kenney_city_commercial/Textures/{variation}.png")),
+                    asset_server.load(format!("high_density/Textures/{variation}.png")),
                 ),
                 ..Default::default()
             })
