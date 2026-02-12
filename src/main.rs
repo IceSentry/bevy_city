@@ -166,39 +166,15 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
         // X roads
         commands.spawn((
             SceneRoot(straight.clone()),
-            Transform::from_translation(Vec3::new(1.0, 0.0, 0.0) + offset),
-        ));
-        commands.spawn((
-            SceneRoot(straight.clone()),
-            Transform::from_translation(Vec3::new(2.0, 0.0, 0.0) + offset),
-        ));
-        commands.spawn((
-            SceneRoot(straight_half.clone()),
-            Transform::from_translation(Vec3::new(2.75, 0.0, 0.0) + offset),
-        ));
-        commands.spawn((
-            SceneRoot(straight.clone()),
-            Transform::from_translation(Vec3::new(3.5, 0.0, 0.0) + offset),
-        ));
-        commands.spawn((
-            SceneRoot(straight.clone()),
-            Transform::from_translation(Vec3::new(4.5, 0.0, 0.0) + offset),
+            Transform::from_translation(Vec3::new(2.75, 0.0, 0.0) + offset)
+                .with_scale(Vec3::new(4.5, 1.0, 1.0)),
         ));
 
         // Z roads
         commands.spawn((
             SceneRoot(straight.clone()),
-            Transform::from_translation(Vec3::new(0.0, 0.0, 1.0) + offset)
-                .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
-        ));
-        commands.spawn((
-            SceneRoot(straight.clone()),
             Transform::from_translation(Vec3::new(0.0, 0.0, 2.0) + offset)
-                .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
-        ));
-        commands.spawn((
-            SceneRoot(straight.clone()),
-            Transform::from_translation(Vec3::new(0.0, 0.0, 3.0) + offset)
+                .with_scale(Vec3::new(3.0, 1.0, 1.0))
                 .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
         ));
 
