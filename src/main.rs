@@ -526,137 +526,15 @@ fn setup_city(
     let noise = OpenSimplex::new(rng.random());
 
     let mut spawn_city_block = |offset: Vec3| {
-        commands.spawn((
-            SceneRoot(crossroad.clone()),
-            Transform::from_translation(offset),
-        ));
-        stats.road_segments += 1;
-
-        // X roads
-        commands.spawn((
-            SceneRoot(straight.clone()),
-            Transform::from_translation(Vec3::new(2.75, 0.0, 0.0) + offset)
-                .with_scale(Vec3::new(4.5, 1.0, 1.0)),
-        ));
-        stats.road_segments += 1;
-
-        let x_segment_entity = commands
-            .spawn(RoadSegment::new(
-                Vec3::new(0.3, 0.0, 0.15) + offset,
-                Vec3::new(5.2, 0.0, 0.15) + offset,
-            ))
-            .id();
-
-        let x_segment_reverse_entity = commands
-            .spawn(RoadSegment::new(
-                Vec3::new(5.2, 0.0, -0.15) + offset,
-                Vec3::new(0.3, 0.0, -0.15) + offset,
-            ))
-            .id();
-
-        // Z roads
-        commands.spawn((
-            SceneRoot(straight.clone()),
-            Transform::from_translation(Vec3::new(0.0, 0.0, 2.0) + offset)
-                .with_scale(Vec3::new(3.0, 1.0, 1.0))
-                .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
-        ));
-        stats.road_segments += 1;
-
-        let z_segment_entity = commands
-            .spawn(RoadSegment::new(
-                Vec3::new(-0.15, 0.0, 0.75) + offset,
-                Vec3::new(-0.15, 0.0, 3.25) + offset,
-            ))
-            .id();
-
-        let z_segment_reverse_entity = commands
-            .spawn(RoadSegment::new(
-                Vec3::new(0.15, 0.0, 3.25) + offset,
-                Vec3::new(0.15, 0.0, 0.75) + offset,
-            ))
-            .id();
-
-        let car_density = 0.75;
-        // X cars (positive direction: 0.3 to 5.2)
-        for i in 0..9 {
-            if rng.random::<f32>() > car_density {
-                let car = cars[rng.random_range(0..cars.len())].clone();
-                commands.spawn((
-                    SceneRoot(car),
-                    Transform::from_translation(
-                        Vec3::new(0.75 + i as f32 * 0.5, 0.0, 0.15) + offset,
-                    )
-                    .with_scale(Vec3::splat(0.15))
-                    .with_rotation(Quat::from_axis_angle(
-                        Vec3::Y,
-                        3.0 * -std::f32::consts::FRAC_PI_2,
-                    )),
-                    Car {
-                        road_segment: x_segment_entity,
-                        speed: 2.0,
-                        distance_traveled: i as f32 * 0.55,
-                    },
-                ));
-                stats.cars_spawned += 1;
-            }
-            // X cars (negative direction: 5.2 to 0.3)
-            if rng.random::<f32>() > car_density {
-                let car = cars[rng.random_range(0..cars.len())].clone();
-                commands.spawn((
-                    SceneRoot(car),
-                    Transform::from_translation(
-                        Vec3::new(0.75 + i as f32 * 0.5, 0.0, -0.15) + offset,
-                    )
-                    .with_scale(Vec3::splat(0.15))
-                    .with_rotation(Quat::from_axis_angle(Vec3::Y, -std::f32::consts::FRAC_PI_2)),
-                    Car {
-                        road_segment: x_segment_reverse_entity,
-                        speed: 2.0,
-                        distance_traveled: i as f32 * 0.55,
-                    },
-                ));
-                stats.cars_spawned += 1;
-            }
-        }
-
-        // Z cars (positive direction: 0.75 to 3.25)
-        for i in 0..6 {
-            if rng.random::<f32>() > car_density {
-                let car = cars[rng.random_range(0..cars.len())].clone();
-                commands.spawn((
-                    SceneRoot(car),
-                    Transform::from_translation(
-                        Vec3::new(-0.15, 0.0, 0.75 + i as f32 * 0.5) + offset,
-                    )
-                    .with_scale(Vec3::splat(0.15)),
-                    Car {
-                        road_segment: z_segment_entity,
-                        speed: 2.0,
-                        distance_traveled: i as f32 * 0.5,
-                    },
-                ));
-                stats.cars_spawned += 1;
-            }
-            // Z cars (negative direction: 3.25 to 0.75)
-            if rng.random::<f32>() > car_density {
-                let car = cars[rng.random_range(0..cars.len())].clone();
-                commands.spawn((
-                    SceneRoot(car),
-                    Transform::from_translation(
-                        Vec3::new(0.15, 0.0, 0.75 + i as f32 * 0.5) + offset,
-                    )
-                    .with_scale(Vec3::splat(0.15))
-                    .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
-                    Car {
-                        road_segment: z_segment_reverse_entity,
-                        speed: 2.0,
-                        distance_traveled: i as f32 * 0.5,
-                    },
-                ));
-                stats.cars_spawned += 1;
-            }
-        }
+        spawn_roads_and_cars(
+            &mut commands,
+            &mut stats,
+            &mut rng,
+            offset,
+            &crossroad,
+            &straight,
+            &cars,
+        );
 
         let ground_tile_scale = Vec3::new(4.5, 1.0, 3.0);
 
@@ -682,7 +560,6 @@ fn setup_city(
                 .with_scale(ground_tile_scale),
             ));
         } else if density < low_density {
-            // low denisty
             commands.spawn((
                 Mesh3d(ground_tile.mesh.clone()),
                 MeshMaterial3d(ground_tile.grass_material.clone()),
@@ -692,49 +569,16 @@ fn setup_city(
                 .with_scale(ground_tile_scale),
             ));
 
-            for z in 0..=8 {
-                commands.spawn((
-                    SceneRoot(tree_small.clone()),
-                    Transform::from_translation(
-                        Vec3::new(0.75, 0.0, 0.75 + z as f32 * 0.3) + offset,
-                    ),
-                ));
-                stats.trees += 1;
-                commands.spawn((
-                    SceneRoot(tree_small.clone()),
-                    Transform::from_translation(
-                        Vec3::new(4.75, 0.0, 0.75 + z as f32 * 0.3) + offset,
-                    ),
-                ));
-                stats.trees += 1;
-            }
-            for i in 0..=6 {
-                commands.spawn((
-                    SceneRoot(fence.clone()),
-                    Transform::from_translation(
-                        Vec3::new(2.75, 0.0, 0.75 + i as f32 * 0.4) + offset,
-                    )
-                    .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
-                ));
-            }
-            for x in 1..=2 {
-                let x_factor = 1.8;
-                commands.spawn((
-                    low_density_buildings.random_building(&mut rng),
-                    Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 1.25) + offset),
-                ));
-                stats.low_density_buildings += 1;
-                commands.spawn((
-                    low_density_buildings.random_building(&mut rng),
-                    Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 2.75) + offset)
-                        .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
-                ));
-                stats.low_density_buildings += 1;
-            }
+            spawn_low_density(
+                &mut commands,
+                &mut stats,
+                &mut rng,
+                offset,
+                &low_density_buildings,
+                tree_small.clone(),
+                fence.clone(),
+            );
         } else if density < medium_density {
-            // medium dcnsity
-            // TODO randomize what is spawned in the alley
-
             commands.spawn((
                 Mesh3d(ground_tile.mesh.clone()),
                 MeshMaterial3d(ground_tile.default_material.clone()),
@@ -744,62 +588,16 @@ fn setup_city(
                 .with_scale(ground_tile_scale),
             ));
 
-            // Use the same tree for the entire alley
-            let tree = trees[rng.random_range(0..2)].clone();
-
-            // Squish things a little so we can spawn more buildings
-            let x_factor = 0.9;
-            for x in 1..=5 {
-                commands.spawn((
-                    medium_density_buildings.random_building(&mut rng),
-                    Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 1.0) + offset),
-                ));
-                stats.medium_density_buildings += 1;
-                for tree_x in 0..=1 {
-                    let tree_x = tree_x as f32 * 0.5;
-                    if x == 5 && tree_x == 0.5 {
-                        break;
-                    }
-                    commands.spawn((
-                        SceneRoot(tree.clone()),
-                        Transform::from_translation(
-                            Vec3::new(tree_x + x as f32 * x_factor, 0.0, 1.75) + offset,
-                        ),
-                    ));
-                    stats.trees += 1;
-                    commands.spawn((
-                        SceneRoot(tree.clone()),
-                        Transform::from_translation(
-                            Vec3::new(tree_x + x as f32 * x_factor, 0.0, 2.25) + offset,
-                        ),
-                    ));
-                    stats.trees += 1;
-                }
-                commands.spawn((
-                    medium_density_buildings.random_building(&mut rng),
-                    Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 3.0) + offset)
-                        .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
-                ));
-                stats.medium_density_buildings += 1;
-            }
-
-            // path
-            for x in 0..=10 {
-                commands.spawn((
-                    SceneRoot(path_stones_long.clone()),
-                    Transform::from_translation(
-                        Vec3::new(
-                            0.75 + (x as f32 * 0.4),
-                            0.02, /*+ 0.02 * x as f32*/
-                            2.0,
-                        ) + offset,
-                    )
-                    .with_scale(Vec3::new(1.0, 2.0, 1.0))
-                    .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
-                ));
-            }
+            spawn_medium_density(
+                &mut commands,
+                &mut stats,
+                &mut rng,
+                offset,
+                &medium_density_buildings,
+                &trees,
+                path_stones_long.clone(),
+            );
         } else {
-            // high density
             commands.spawn((
                 Mesh3d(ground_tile.mesh.clone()),
                 MeshMaterial3d(ground_tile.default_material.clone()),
@@ -809,23 +607,7 @@ fn setup_city(
                 .with_scale(ground_tile_scale),
             ));
 
-            for x in 0..3 {
-                commands.spawn((
-                    skyscrapers.random_building(&mut rng),
-                    Transform::from_translation(
-                        Vec3::new(1.25 + x as f32 * 1.5, 0.0, 1.25) + offset,
-                    ),
-                ));
-                stats.skyscrapers += 1;
-                commands.spawn((
-                    skyscrapers.random_building(&mut rng),
-                    Transform::from_translation(
-                        Vec3::new(1.25 + x as f32 * 1.5, 0.0, 2.75) + offset,
-                    )
-                    .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
-                ));
-                stats.skyscrapers += 1;
-            }
+            spawn_high_density(&mut commands, &mut stats, &skyscrapers, &mut rng, offset);
         }
     };
 
@@ -859,4 +641,271 @@ fn setup_city(
     //     let _ = std::fs::write("./density.ppm", image);
     //     println!("density range: {density_min}..{density_max}");
     // }
+}
+
+fn spawn_roads_and_cars<R: RngExt>(
+    commands: &mut Commands,
+    stats: &mut SceneStats,
+    rng: &mut R,
+    offset: Vec3,
+    crossroad: &Handle<Scene>,
+    straight: &Handle<Scene>,
+    cars: &[Handle<Scene>],
+) {
+    commands.spawn((
+        SceneRoot(crossroad.clone()),
+        Transform::from_translation(offset),
+    ));
+    stats.road_segments += 1;
+
+    // X roads
+    commands.spawn((
+        SceneRoot(straight.clone()),
+        Transform::from_translation(Vec3::new(2.75, 0.0, 0.0) + offset)
+            .with_scale(Vec3::new(4.5, 1.0, 1.0)),
+    ));
+    stats.road_segments += 1;
+
+    let x_segment_entity = commands
+        .spawn(RoadSegment::new(
+            Vec3::new(0.3, 0.0, 0.15) + offset,
+            Vec3::new(5.2, 0.0, 0.15) + offset,
+        ))
+        .id();
+
+    let x_segment_reverse_entity = commands
+        .spawn(RoadSegment::new(
+            Vec3::new(5.2, 0.0, -0.15) + offset,
+            Vec3::new(0.3, 0.0, -0.15) + offset,
+        ))
+        .id();
+
+    // Z roads
+    commands.spawn((
+        SceneRoot(straight.clone()),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 2.0) + offset)
+            .with_scale(Vec3::new(3.0, 1.0, 1.0))
+            .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
+    ));
+    stats.road_segments += 1;
+
+    let z_segment_entity = commands
+        .spawn(RoadSegment::new(
+            Vec3::new(-0.15, 0.0, 0.75) + offset,
+            Vec3::new(-0.15, 0.0, 3.25) + offset,
+        ))
+        .id();
+
+    let z_segment_reverse_entity = commands
+        .spawn(RoadSegment::new(
+            Vec3::new(0.15, 0.0, 3.25) + offset,
+            Vec3::new(0.15, 0.0, 0.75) + offset,
+        ))
+        .id();
+
+    let car_density = 0.75;
+    // X cars (positive direction: 0.3 to 5.2)
+    for i in 0..9 {
+        if rng.random::<f32>() > car_density {
+            let car = cars[rng.random_range(0..cars.len())].clone();
+            commands.spawn((
+                SceneRoot(car),
+                Transform::from_translation(Vec3::new(0.75 + i as f32 * 0.5, 0.0, 0.15) + offset)
+                    .with_scale(Vec3::splat(0.15))
+                    .with_rotation(Quat::from_axis_angle(
+                        Vec3::Y,
+                        3.0 * -std::f32::consts::FRAC_PI_2,
+                    )),
+                Car {
+                    road_segment: x_segment_entity,
+                    speed: 2.0,
+                    distance_traveled: i as f32 * 0.55,
+                },
+            ));
+            stats.cars_spawned += 1;
+        }
+        // X cars (negative direction: 5.2 to 0.3)
+        if rng.random::<f32>() > car_density {
+            let car = cars[rng.random_range(0..cars.len())].clone();
+            commands.spawn((
+                SceneRoot(car),
+                Transform::from_translation(Vec3::new(0.75 + i as f32 * 0.5, 0.0, -0.15) + offset)
+                    .with_scale(Vec3::splat(0.15))
+                    .with_rotation(Quat::from_axis_angle(Vec3::Y, -std::f32::consts::FRAC_PI_2)),
+                Car {
+                    road_segment: x_segment_reverse_entity,
+                    speed: 2.0,
+                    distance_traveled: i as f32 * 0.55,
+                },
+            ));
+            stats.cars_spawned += 1;
+        }
+    }
+
+    // Z cars (positive direction: 0.75 to 3.25)
+    for i in 0..6 {
+        if rng.random::<f32>() > car_density {
+            let car = cars[rng.random_range(0..cars.len())].clone();
+            commands.spawn((
+                SceneRoot(car),
+                Transform::from_translation(Vec3::new(-0.15, 0.0, 0.75 + i as f32 * 0.5) + offset)
+                    .with_scale(Vec3::splat(0.15)),
+                Car {
+                    road_segment: z_segment_entity,
+                    speed: 2.0,
+                    distance_traveled: i as f32 * 0.5,
+                },
+            ));
+            stats.cars_spawned += 1;
+        }
+        // Z cars (negative direction: 3.25 to 0.75)
+        if rng.random::<f32>() > car_density {
+            let car = cars[rng.random_range(0..cars.len())].clone();
+            commands.spawn((
+                SceneRoot(car),
+                Transform::from_translation(Vec3::new(0.15, 0.0, 0.75 + i as f32 * 0.5) + offset)
+                    .with_scale(Vec3::splat(0.15))
+                    .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
+                Car {
+                    road_segment: z_segment_reverse_entity,
+                    speed: 2.0,
+                    distance_traveled: i as f32 * 0.5,
+                },
+            ));
+            stats.cars_spawned += 1;
+        }
+    }
+}
+
+fn spawn_low_density<R: RngExt>(
+    commands: &mut Commands,
+    stats: &mut SceneStats,
+    mut rng: &mut R,
+    offset: Vec3,
+    low_density_buildings: &LowDensityBuildings,
+    tree_small: Handle<Scene>,
+    fence: Handle<Scene>,
+) {
+    for z in 0..=8 {
+        commands.spawn((
+            SceneRoot(tree_small.clone()),
+            Transform::from_translation(Vec3::new(0.75, 0.0, 0.75 + z as f32 * 0.3) + offset),
+        ));
+        stats.trees += 1;
+        commands.spawn((
+            SceneRoot(tree_small.clone()),
+            Transform::from_translation(Vec3::new(4.75, 0.0, 0.75 + z as f32 * 0.3) + offset),
+        ));
+        stats.trees += 1;
+    }
+    for i in 0..=6 {
+        commands.spawn((
+            SceneRoot(fence.clone()),
+            Transform::from_translation(Vec3::new(2.75, 0.0, 0.75 + i as f32 * 0.4) + offset)
+                .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
+        ));
+    }
+    for x in 1..=2 {
+        let x_factor = 1.8;
+        commands.spawn((
+            low_density_buildings.random_building(&mut rng),
+            Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 1.25) + offset),
+        ));
+        stats.low_density_buildings += 1;
+        commands.spawn((
+            low_density_buildings.random_building(&mut rng),
+            Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 2.75) + offset)
+                .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
+        ));
+        stats.low_density_buildings += 1;
+    }
+}
+
+fn spawn_medium_density<R: RngExt>(
+    commands: &mut Commands,
+    stats: &mut SceneStats,
+    mut rng: &mut R,
+    offset: Vec3,
+    medium_density_buildings: &MediumDensityBuildings,
+    trees: &[Handle<Scene>],
+    path_stones_long: Handle<Scene>,
+) {
+    // TODO randomize what is spawned in the alley
+
+    // Use the same tree for the entire alley
+    let tree = trees[rng.random_range(0..2)].clone();
+
+    // Squish things a little so we can spawn more buildings
+    let x_factor = 0.9;
+    for x in 1..=5 {
+        commands.spawn((
+            medium_density_buildings.random_building(&mut rng),
+            Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 1.0) + offset),
+        ));
+        stats.medium_density_buildings += 1;
+        for tree_x in 0..=1 {
+            let tree_x = tree_x as f32 * 0.5;
+            if x == 5 && tree_x == 0.5 {
+                break;
+            }
+            commands.spawn((
+                SceneRoot(tree.clone()),
+                Transform::from_translation(
+                    Vec3::new(tree_x + x as f32 * x_factor, 0.0, 1.75) + offset,
+                ),
+            ));
+            stats.trees += 1;
+            commands.spawn((
+                SceneRoot(tree.clone()),
+                Transform::from_translation(
+                    Vec3::new(tree_x + x as f32 * x_factor, 0.0, 2.25) + offset,
+                ),
+            ));
+            stats.trees += 1;
+        }
+        commands.spawn((
+            medium_density_buildings.random_building(&mut rng),
+            Transform::from_translation(Vec3::new(x as f32 * x_factor, 0.0, 3.0) + offset)
+                .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
+        ));
+        stats.medium_density_buildings += 1;
+    }
+
+    // path
+    for x in 0..=10 {
+        commands.spawn((
+            SceneRoot(path_stones_long.clone()),
+            Transform::from_translation(
+                Vec3::new(
+                    0.75 + (x as f32 * 0.4),
+                    0.02, /*+ 0.02 * x as f32*/
+                    2.0,
+                ) + offset,
+            )
+            .with_scale(Vec3::new(1.0, 2.0, 1.0))
+            .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
+        ));
+    }
+}
+
+fn spawn_high_density<R: RngExt>(
+    commands: &mut Commands,
+    stats: &mut SceneStats,
+    skyscrapers: &SkyscraperBuildings,
+    mut rng: &mut R,
+    offset: Vec3,
+) {
+    for x in 0..3 {
+        commands.spawn((
+            skyscrapers.random_building(&mut rng),
+            Transform::from_translation(Vec3::new(1.25 + x as f32 * 1.5, 0.0, 1.25) + offset),
+        ));
+        stats.skyscrapers += 1;
+        commands.spawn((
+            skyscrapers.random_building(&mut rng),
+            Transform::from_translation(Vec3::new(1.25 + x as f32 * 1.5, 0.0, 2.75) + offset)
+                .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
+        ));
+        stats.skyscrapers += 1;
+    }
 }
