@@ -2,18 +2,48 @@ use core::f64;
 
 use bevy::camera::Exposure;
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
-use bevy::color::palettes::css::{DARK_GREEN, GREEN, WHITE};
+use bevy::color::palettes::css::WHITE;
 use bevy::diagnostic::FrameCount;
 use bevy::light::{AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight};
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium, ScreenSpaceReflections};
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
-use bevy::render::RenderPlugin;
 use bevy::render::settings::{WgpuFeatures, WgpuSettings};
+use bevy::render::RenderPlugin;
 use noise::{NoiseFn, OpenSimplex};
 use rand::rngs::SmallRng;
 use rand::{RngExt, SeedableRng};
+
+#[derive(Component)]
+struct Car {
+    segment_entity: Entity,
+    speed: f32,
+    distance_traveled: f32,
+}
+
+#[derive(Component, Clone, Copy)]
+struct RoadSegment {
+    id: u32,
+    start: Vec3,
+    end: Vec3,
+    direction: Vec3,
+    length: f32,
+}
+
+impl RoadSegment {
+    fn new(id: u32, start: Vec3, end: Vec3) -> Self {
+        let direction = (end - start).normalize();
+        let length = (end - start).length();
+        RoadSegment {
+            id,
+            start,
+            end,
+            direction,
+            length,
+        }
+    }
+}
 
 fn main() {
     App::new()
@@ -60,7 +90,7 @@ fn main() {
                 .chain(),
         )
         .add_systems(Startup, (setup_camera,))
-        .add_systems(Update, (make_visible, toggle_wireframe))
+        .add_systems(Update, (make_visible, toggle_wireframe, move_cars))
         // .add_observer(generate_variations)
         .run();
 }
@@ -81,6 +111,26 @@ fn toggle_wireframe(
 ) {
     if keyboard_input.just_pressed(KeyCode::KeyZ) {
         config.global = !config.global;
+    }
+}
+
+fn move_cars(
+    mut cars: Query<(&mut Car, &mut Transform)>,
+    segments: Query<&RoadSegment>,
+    time: Res<Time>,
+) {
+    for (mut car, mut transform) in cars.iter_mut() {
+        if let Ok(segment) = segments.get(car.segment_entity) {
+            car.distance_traveled += car.speed * time.delta_secs();
+
+            if car.distance_traveled > segment.length {
+                car.distance_traveled = 0.0;
+            }
+
+            let progress = car.distance_traveled / segment.length;
+            let new_pos = segment.start + segment.direction * segment.length * progress;
+            transform.translation = new_pos;
+        }
     }
 }
 
@@ -407,6 +457,16 @@ fn setup_city(
                 .with_scale(Vec3::new(4.5, 1.0, 1.0)),
         ));
 
+        let x_segment_start = Vec3::new(0.3, 0.0, 0.15) + offset;
+        let x_segment_end = Vec3::new(5.2, 0.0, 0.15) + offset;
+        let x_segment = RoadSegment::new(0, x_segment_start, x_segment_end);
+        let x_segment_entity = commands.spawn(x_segment).id();
+
+        let x_segment_neg_start = Vec3::new(5.2, 0.0, -0.15) + offset;
+        let x_segment_neg_end = Vec3::new(0.3, 0.0, -0.15) + offset;
+        let x_segment_neg = RoadSegment::new(1, x_segment_neg_start, x_segment_neg_end);
+        let x_segment_neg_entity = commands.spawn(x_segment_neg).id();
+
         // Z roads
         commands.spawn((
             SceneRoot(straight.clone()),
@@ -415,9 +475,19 @@ fn setup_city(
                 .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
         ));
 
+        let z_segment_start = Vec3::new(-0.15, 0.0, 0.75) + offset;
+        let z_segment_end = Vec3::new(-0.15, 0.0, 3.25) + offset;
+        let z_segment = RoadSegment::new(2, z_segment_start, z_segment_end);
+        let z_segment_entity = commands.spawn(z_segment).id();
+
+        let z_segment_pos_start = Vec3::new(0.15, 0.0, 3.25) + offset;
+        let z_segment_pos_end = Vec3::new(0.15, 0.0, 0.75) + offset;
+        let z_segment_pos = RoadSegment::new(3, z_segment_pos_start, z_segment_pos_end);
+        let z_segment_pos_entity = commands.spawn(z_segment_pos).id();
+
         // TODO spawn cars based on housing density
         let car_density = 0.75;
-        // X cars
+        // X cars (positive direction: 0.3 to 5.2)
         for i in 0..9 {
             if rng.random::<f32>() > car_density {
                 let car = cars[rng.random_range(0..cars.len())].clone();
@@ -431,8 +501,14 @@ fn setup_city(
                         Vec3::Y,
                         3.0 * std::f32::consts::FRAC_PI_2,
                     )),
+                    Car {
+                        segment_entity: x_segment_entity,
+                        speed: 2.0,
+                        distance_traveled: i as f32 * 0.55,
+                    },
                 ));
             }
+            // X cars (negative direction: 5.2 to 0.3)
             if rng.random::<f32>() > car_density {
                 let car = cars[rng.random_range(0..cars.len())].clone();
                 commands.spawn((
@@ -442,11 +518,16 @@ fn setup_city(
                     )
                     .with_scale(Vec3::splat(0.15))
                     .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::FRAC_PI_2)),
+                    Car {
+                        segment_entity: x_segment_neg_entity,
+                        speed: 2.0,
+                        distance_traveled: i as f32 * 0.55,
+                    },
                 ));
             }
         }
 
-        // Z cars
+        // Z cars (positive direction: 0.75 to 3.25)
         for i in 0..6 {
             if rng.random::<f32>() > car_density {
                 let car = cars[rng.random_range(0..cars.len())].clone();
@@ -456,8 +537,14 @@ fn setup_city(
                         Vec3::new(-0.15, 0.0, 0.75 + i as f32 * 0.5) + offset,
                     )
                     .with_scale(Vec3::splat(0.15)),
+                    Car {
+                        segment_entity: z_segment_entity,
+                        speed: 2.0,
+                        distance_traveled: i as f32 * 0.5,
+                    },
                 ));
             }
+            // Z cars (negative direction: 3.25 to 0.75)
             if rng.random::<f32>() > car_density {
                 let car = cars[rng.random_range(0..cars.len())].clone();
                 commands.spawn((
@@ -467,6 +554,11 @@ fn setup_city(
                     )
                     .with_scale(Vec3::splat(0.15))
                     .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
+                    Car {
+                        segment_entity: z_segment_pos_entity,
+                        speed: 2.0,
+                        distance_traveled: i as f32 * 0.5,
+                    },
                 ));
             }
         }
