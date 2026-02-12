@@ -203,10 +203,13 @@ fn setup_city(mut commands: Commands, asset_server: Res<AssetServer>) {
         let density =
             noise.get([offset.x as f64 * scale, offset.z as f64 * scale, 0.0]) * 0.5 + 0.5;
 
+        let rural = 0.45;
         let low_density = 0.6;
         let medium_density = 0.7;
 
-        if density < low_density {
+        if density < rural {
+            // TODO
+        } else if density < low_density {
             // low denisty
             for z in 0..=8 {
                 commands.spawn((
