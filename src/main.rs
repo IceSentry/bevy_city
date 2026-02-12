@@ -286,18 +286,14 @@ fn setup_city(
     mut stats: ResMut<SceneStats>,
 ) {
     let tree_small: Handle<Scene> = asset_server
-        .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/tree-small.glb"));
+        .load(GltfAssetLabel::Scene(0).from_asset("trees/city_suburban/tree-small.glb"));
     let tree_large: Handle<Scene> = asset_server
-        .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/tree-large.glb"));
-    let _planter: Handle<Scene> =
-        asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/planter.glb"));
+        .load(GltfAssetLabel::Scene(0).from_asset("trees/city_suburban/tree-large.glb"));
 
     let trees = [tree_small.clone(), tree_large.clone()];
 
     let path_stones_long: Handle<Scene> = asset_server
         .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/path-stones-long.glb"));
-    let _path_stones_short: Handle<Scene> = asset_server
-        .load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/path-stones-short.glb"));
 
     let fence: Handle<Scene> =
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("kenney_city_suburban/fence.glb"));
