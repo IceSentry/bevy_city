@@ -2,7 +2,7 @@ use core::f64;
 
 use bevy::camera::Exposure;
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
-use bevy::color::palettes::css::{GREEN, WHITE};
+use bevy::color::palettes::css::WHITE;
 use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig};
 use bevy::diagnostic::FrameCount;
 use bevy::light::{AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight};
@@ -18,28 +18,26 @@ use rand::{RngExt, SeedableRng};
 
 #[derive(Component)]
 struct Car {
-    segment_entity: Entity,
+    road_segment: Entity,
     speed: f32,
     distance_traveled: f32,
 }
 
 #[derive(Component, Clone, Copy)]
 struct RoadSegment {
-    id: u32,
     start: Vec3,
-    end: Vec3,
+    _end: Vec3,
     direction: Vec3,
     length: f32,
 }
 
 impl RoadSegment {
-    fn new(id: u32, start: Vec3, end: Vec3) -> Self {
+    fn new(start: Vec3, end: Vec3) -> Self {
         let direction = (end - start).normalize();
         let length = (end - start).length();
         RoadSegment {
-            id,
             start,
-            end,
+            _end: end,
             direction,
             length,
         }
@@ -157,7 +155,7 @@ fn move_cars(
     time: Res<Time>,
 ) {
     for (mut car, mut transform) in cars.iter_mut() {
-        if let Ok(segment) = segments.get(car.segment_entity) {
+        if let Ok(segment) = segments.get(car.road_segment) {
             car.distance_traveled += car.speed * time.delta_secs();
 
             if car.distance_traveled > segment.length {
@@ -270,7 +268,6 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
     commands.spawn((
         DirectionalLight {
             shadows_enabled: true,
-
             illuminance: light_consts::lux::RAW_SUNLIGHT,
             ..default()
         },
@@ -477,31 +474,6 @@ fn load_ground_tiles(
     });
 }
 
-// fn generate_variations(
-//     scene_ready: On<SceneInstanceReady>,
-//     // mut commands: Commands,
-//     children: Query<&Children>,
-//     // color_override: Query<&ColorOverride>,
-//     mesh_materials: Query<(&MeshMaterial3d<StandardMaterial>, &GltfMaterialName)>,
-//     // mut asset_materials: ResMut<Assets<StandardMaterial>>,
-// ) {
-//     info!("processing Scene Entity: {}", scene_ready.entity);
-//
-//     // Iterate over all children recursively
-//     for descendant in children.iter_descendants(scene_ready.entity) {
-//         // Get the material id and name which were created from the glTF file information
-//         let Ok((id, material_name)) = mesh_materials.get(descendant) else {
-//             continue;
-//         };
-//         // Get the material of the descendant
-//         // let Some(material) = asset_materials.get_mut(id.id()) else {
-//         //     continue;
-//         // };
-//         let name = material_name.0.as_str();
-//         info!("material: {name} {id:?}");
-//     }
-// }
-
 fn setup_city(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -568,15 +540,19 @@ fn setup_city(
         ));
         stats.road_segments += 1;
 
-        let x_segment_start = Vec3::new(0.3, 0.0, 0.15) + offset;
-        let x_segment_end = Vec3::new(5.2, 0.0, 0.15) + offset;
-        let x_segment = RoadSegment::new(0, x_segment_start, x_segment_end);
-        let x_segment_entity = commands.spawn(x_segment).id();
+        let x_segment_entity = commands
+            .spawn(RoadSegment::new(
+                Vec3::new(0.3, 0.0, 0.15) + offset,
+                Vec3::new(5.2, 0.0, 0.15) + offset,
+            ))
+            .id();
 
-        let x_segment_neg_start = Vec3::new(5.2, 0.0, -0.15) + offset;
-        let x_segment_neg_end = Vec3::new(0.3, 0.0, -0.15) + offset;
-        let x_segment_neg = RoadSegment::new(1, x_segment_neg_start, x_segment_neg_end);
-        let x_segment_neg_entity = commands.spawn(x_segment_neg).id();
+        let x_segment_reverse_entity = commands
+            .spawn(RoadSegment::new(
+                Vec3::new(5.2, 0.0, -0.15) + offset,
+                Vec3::new(0.3, 0.0, -0.15) + offset,
+            ))
+            .id();
 
         // Z roads
         commands.spawn((
@@ -587,17 +563,20 @@ fn setup_city(
         ));
         stats.road_segments += 1;
 
-        let z_segment_start = Vec3::new(-0.15, 0.0, 0.75) + offset;
-        let z_segment_end = Vec3::new(-0.15, 0.0, 3.25) + offset;
-        let z_segment = RoadSegment::new(2, z_segment_start, z_segment_end);
-        let z_segment_entity = commands.spawn(z_segment).id();
+        let z_segment_entity = commands
+            .spawn(RoadSegment::new(
+                Vec3::new(-0.15, 0.0, 0.75) + offset,
+                Vec3::new(-0.15, 0.0, 3.25) + offset,
+            ))
+            .id();
 
-        let z_segment_pos_start = Vec3::new(0.15, 0.0, 3.25) + offset;
-        let z_segment_pos_end = Vec3::new(0.15, 0.0, 0.75) + offset;
-        let z_segment_pos = RoadSegment::new(3, z_segment_pos_start, z_segment_pos_end);
-        let z_segment_pos_entity = commands.spawn(z_segment_pos).id();
+        let z_segment_reverse_entity = commands
+            .spawn(RoadSegment::new(
+                Vec3::new(0.15, 0.0, 3.25) + offset,
+                Vec3::new(0.15, 0.0, 0.75) + offset,
+            ))
+            .id();
 
-        // TODO spawn cars based on housing density
         let car_density = 0.75;
         // X cars (positive direction: 0.3 to 5.2)
         for i in 0..9 {
@@ -614,7 +593,7 @@ fn setup_city(
                         3.0 * -std::f32::consts::FRAC_PI_2,
                     )),
                     Car {
-                        segment_entity: x_segment_entity,
+                        road_segment: x_segment_entity,
                         speed: 2.0,
                         distance_traveled: i as f32 * 0.55,
                     },
@@ -632,7 +611,7 @@ fn setup_city(
                     .with_scale(Vec3::splat(0.15))
                     .with_rotation(Quat::from_axis_angle(Vec3::Y, -std::f32::consts::FRAC_PI_2)),
                     Car {
-                        segment_entity: x_segment_neg_entity,
+                        road_segment: x_segment_reverse_entity,
                         speed: 2.0,
                         distance_traveled: i as f32 * 0.55,
                     },
@@ -652,7 +631,7 @@ fn setup_city(
                     )
                     .with_scale(Vec3::splat(0.15)),
                     Car {
-                        segment_entity: z_segment_entity,
+                        road_segment: z_segment_entity,
                         speed: 2.0,
                         distance_traveled: i as f32 * 0.5,
                     },
@@ -670,7 +649,7 @@ fn setup_city(
                     .with_scale(Vec3::splat(0.15))
                     .with_rotation(Quat::from_axis_angle(Vec3::Y, std::f32::consts::PI)),
                     Car {
-                        segment_entity: z_segment_pos_entity,
+                        road_segment: z_segment_reverse_entity,
                         speed: 2.0,
                         distance_traveled: i as f32 * 0.5,
                     },
