@@ -257,14 +257,14 @@ fn load_ground_tiles(
             mesh: 0,
             primitive: 0,
         }
-        .from_asset("kenney_roads/tile-low.glb"),
+        .from_asset("ground_tile/tile-low.glb"),
     );
     let default_material = asset_server.load(
         GltfAssetLabel::Material {
             index: 0,
             is_scale_inverted: false,
         }
-        .from_asset("kenney_roads/tile-low.glb"),
+        .from_asset("ground_tile/tile-low.glb"),
     );
     let grass_material = materials.add(StandardMaterial::from_color(Color::srgb_u8(97, 203, 139)));
     commands.insert_resource(GroundTiles {
