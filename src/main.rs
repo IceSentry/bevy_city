@@ -1,5 +1,6 @@
 use core::f64;
 
+use bevy::anti_alias::taa::TemporalAntiAliasing;
 use bevy::camera::Exposure;
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 use bevy::color::palettes::css::WHITE;
@@ -12,6 +13,7 @@ use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
 use bevy::render::RenderPlugin;
 use bevy::render::settings::{WgpuFeatures, WgpuSettings};
+use bevy::render::view::Hdr;
 use noise::{NoiseFn, OpenSimplex};
 use rand::rngs::SmallRng;
 use rand::{RngExt, SeedableRng};
@@ -208,6 +210,7 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
     // camera
     commands.spawn((
         Camera3d::default(),
+        Hdr,
         Transform::from_xyz(15.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
         FreeCamera::default(),
         Atmosphere::earthlike(scattering_mediums.add(ScatteringMedium::default())),
@@ -224,9 +227,8 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
             ambient_intensity: 0.0,
             ..default()
         },
-        // Msaa::Off,
-        // TemporalAntiAliasing::default(),
-        // Smaa::default(),
+        Msaa::Off,
+        TemporalAntiAliasing::default(),
         // ScreenSpaceReflections::default(),
     ));
 
