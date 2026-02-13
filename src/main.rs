@@ -232,7 +232,7 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
 
     commands.spawn((
         DirectionalLight {
-            shadows_enabled: false,
+            shadows_enabled: true,
             illuminance: light_consts::lux::RAW_SUNLIGHT,
             ..default()
         },
