@@ -43,6 +43,11 @@ struct SceneStats {
 #[derive(Component)]
 struct StatsText;
 
+#[derive(Resource)]
+struct Settings {
+    move_cars: bool,
+}
+
 fn main() {
     App::new()
         .add_plugins((
@@ -92,6 +97,7 @@ fn main() {
             global: false,
             default_color: WHITE.into(),
         })
+        .insert_resource(Settings { move_cars: false })
         .init_resource::<SceneStats>()
         .add_systems(
             Startup,
@@ -110,7 +116,7 @@ fn main() {
         .add_systems(Startup, (setup_camera, spawn_stats_ui))
         .add_systems(
             Update,
-            (make_visible, toggle_wireframe, move_cars, update_stats_ui),
+            (make_visible, update_settings, move_cars, update_stats_ui),
         )
         // .add_observer(generate_variations)
         .run();
@@ -126,12 +132,16 @@ fn make_visible(mut window: Single<&mut Window>, frames: Res<FrameCount>) {
     }
 }
 
-fn toggle_wireframe(
+fn update_settings(
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut config: ResMut<WireframeConfig>,
+    mut wireframe_config: ResMut<WireframeConfig>,
+    mut settings: ResMut<Settings>,
 ) {
     if keyboard_input.just_pressed(KeyCode::KeyZ) {
-        config.global = !config.global;
+        wireframe_config.global = !wireframe_config.global;
+    }
+    if keyboard_input.just_pressed(KeyCode::KeyX) {
+        settings.move_cars = !settings.move_cars;
     }
 }
 

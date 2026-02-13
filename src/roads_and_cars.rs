@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use rand::RngExt;
 
-use crate::SceneStats;
+use crate::{SceneStats, Settings};
 
 #[derive(Component)]
 pub struct Car {
@@ -35,7 +35,12 @@ pub fn move_cars(
     mut cars: Query<(&mut Car, &mut Transform)>,
     segments: Query<&RoadSegment>,
     time: Res<Time>,
+    settings: Res<Settings>,
 ) {
+    if !settings.move_cars {
+        return;
+    }
+
     for (mut car, mut transform) in cars.iter_mut() {
         if let Ok(segment) = segments.get(car.road_segment) {
             car.distance_traveled += car.speed * time.delta_secs();
