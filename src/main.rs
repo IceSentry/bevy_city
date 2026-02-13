@@ -1,19 +1,19 @@
 use core::f64;
 
 use bevy::anti_alias::taa::TemporalAntiAliasing;
-use bevy::camera::Exposure;
+use bevy::camera::{Exposure, Hdr};
 use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 use bevy::color::palettes::css::WHITE;
 use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig};
 use bevy::diagnostic::FrameCount;
-use bevy::light::{AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight};
+use bevy::light::atmosphere::ScatteringMedium;
+use bevy::light::{Atmosphere, AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight};
+use bevy::pbr::AtmosphereSettings;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
-use bevy::pbr::{Atmosphere, AtmosphereSettings, ScatteringMedium};
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
 use bevy::render::RenderPlugin;
 use bevy::render::settings::{WgpuFeatures, WgpuSettings};
-use bevy::render::view::Hdr;
 use noise::{NoiseFn, OpenSimplex};
 use rand::rngs::SmallRng;
 use rand::{RngExt, SeedableRng};
@@ -69,7 +69,7 @@ fn main() {
             FpsOverlayPlugin {
                 config: FpsOverlayConfig {
                     text_config: TextFont {
-                        font_size: 32.0,
+                        font_size: FontSize::Px(32.0),
                         ..default()
                     },
                     // We can also change color of the overlay
@@ -159,7 +159,7 @@ fn spawn_stats_ui(mut commands: Commands) {
                     parent.spawn((
                         Text::new(""),
                         TextFont {
-                            font_size: 20.0,
+                            font_size: FontSize::Px(20.0),
                             ..default()
                         },
                         TextColor(Color::WHITE),
@@ -234,7 +234,7 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
 
     commands.spawn((
         DirectionalLight {
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             illuminance: light_consts::lux::RAW_SUNLIGHT,
             ..default()
         },
@@ -262,17 +262,16 @@ fn load_ground_tiles(
         }
         .from_asset("ground_tile/tile-low.glb"),
     );
-    let default_material = asset_server.load(
-        GltfAssetLabel::Material {
-            index: 0,
-            is_scale_inverted: false,
-        }
-        .from_asset("ground_tile/tile-low.glb"),
-    );
+    // TODO use this once https://github.com/bevyengine/bevy/pull/22943 is merged
+    // let default_material: Handle<StandardMaterial> = asset_server.load(format!(
+    //     "ground_tile/tile-low.glb#{}/std",
+    //     GltfAssetLabel::DefaultMaterial
+    // ));
+    let white_material = materials.add(StandardMaterial::from_color(WHITE));
     let grass_material = materials.add(StandardMaterial::from_color(Color::srgb_u8(97, 203, 139)));
     commands.insert_resource(GroundTiles {
         mesh,
-        default_material,
+        default_material: white_material,
         grass_material,
     });
 }
