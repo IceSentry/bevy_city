@@ -6,7 +6,6 @@ use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 use bevy::color::palettes::css::WHITE;
 use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig};
 use bevy::diagnostic::FrameCount;
-use bevy::gltf::GltfMaterial;
 use bevy::light::atmosphere::ScatteringMedium;
 use bevy::light::{Atmosphere, AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight};
 use bevy::pbr::AtmosphereSettings;
@@ -263,21 +262,16 @@ fn load_ground_tiles(
         }
         .from_asset("ground_tile/tile-low.glb"),
     );
-    // let default_material: Handle<StandardMaterial> = asset_server.load(
-    //     GltfAssetLabel::Material {
-    //         index: 0,
-    //         is_scale_inverted: false,
-    //     }
-    //     .from_asset("ground_tile/tile-low.glb"),
-    // );
-    // let default_material: Handle<GltfMaterial> =
-    //     asset_server.load("ground_tile/tile-low.glb#Material0");
-    let default_material: Handle<StandardMaterial> =
-        asset_server.load("ground_tile/tile-low.glb#Material0#std");
+    // TODO use this once https://github.com/bevyengine/bevy/pull/22943 is merged
+    // let default_material: Handle<StandardMaterial> = asset_server.load(format!(
+    //     "ground_tile/tile-low.glb#{}/std",
+    //     GltfAssetLabel::DefaultMaterial
+    // ));
+    let white_material = materials.add(StandardMaterial::from_color(WHITE));
     let grass_material = materials.add(StandardMaterial::from_color(Color::srgb_u8(97, 203, 139)));
     commands.insert_resource(GroundTiles {
         mesh,
-        default_material,
+        default_material: white_material,
         grass_material,
     });
 }
