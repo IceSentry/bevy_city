@@ -291,16 +291,6 @@ fn setup_city(
     let noise = OpenSimplex::new(rng.random());
 
     let mut spawn_city_block = |offset: Vec3| {
-        spawn_roads_and_cars(
-            &mut commands,
-            &mut stats,
-            &mut rng,
-            offset,
-            &roads_and_cars_assets,
-        );
-
-        let ground_tile_scale = Vec3::new(4.5, 1.0, 3.0);
-
         let noise_scale = 0.025;
         let density = noise.get([
             offset.x as f64 * noise_scale,
@@ -313,7 +303,20 @@ fn setup_city(
         let low_density = 0.6;
         let medium_density = 0.7;
 
-        if density < rural {
+        if density > rural {
+            spawn_roads_and_cars(
+                &mut commands,
+                &mut stats,
+                &mut rng,
+                offset,
+                &roads_and_cars_assets,
+            );
+        }
+
+        let ground_tile_scale = Vec3::new(4.5, 1.0, 3.0);
+
+        if density > rural && rng.random::<f32>() < 0.025 {
+            // park
             commands.spawn((
                 Mesh3d(ground_tile.mesh.clone()),
                 MeshMaterial3d(ground_tile.grass_material.clone()),
@@ -321,6 +324,17 @@ fn setup_city(
                     Vec3::new(0.5, -0.5005, 0.5) + ground_tile_scale / 2.0 + offset,
                 )
                 .with_scale(ground_tile_scale),
+            ));
+            return;
+        }
+
+        if density < rural {
+            let scale = ground_tile_scale + Vec3::new(1.0, 0.0, 1.0);
+            commands.spawn((
+                Mesh3d(ground_tile.mesh.clone()),
+                MeshMaterial3d(ground_tile.grass_material.clone()),
+                Transform::from_translation(Vec3::new(-0.5, -0.5005, -0.5) + scale / 2.0 + offset)
+                    .with_scale(scale),
             ));
         } else if density < low_density {
             commands.spawn((
