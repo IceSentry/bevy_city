@@ -7,7 +7,8 @@ edition = "2024"
 bevy = { git = "https://github.com/bevyengine/bevy.git", rev = "e696fa75260d52129df53db4328aca64c068d613", default-features = false, features = [
     "3d",
     "free_camera",
-    "bevy_dev_tools"
+    "bevy_dev_tools",
+    "experimental_bevy_feathers"
 ] }
 noise = "0.9.0"
 rand = "0.10.0"

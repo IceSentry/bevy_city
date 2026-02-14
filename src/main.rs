@@ -6,6 +6,9 @@ use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
 use bevy::color::palettes::css::WHITE;
 use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig};
 use bevy::diagnostic::FrameCount;
+use bevy::feathers::FeathersPlugins;
+use bevy::feathers::dark_theme::create_dark_theme;
+use bevy::feathers::theme::UiTheme;
 use bevy::light::atmosphere::ScatteringMedium;
 use bevy::light::{Atmosphere, AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight};
 use bevy::pbr::AtmosphereSettings;
@@ -23,11 +26,13 @@ use crate::medium_density::{
     MediumDensityBuildings, load_medium_density_buildings, spawn_medium_density,
 };
 use crate::roads_and_cars::{RoadsAndCarsAssets, load_cars, move_cars, spawn_roads_and_cars};
+use crate::settings_ui::{Settings, SettingsUiPlugin};
 use crate::skyscrapers::{SkyscraperBuildings, load_skyscrapers, spawn_high_density};
 
 mod low_density;
 mod medium_density;
 mod roads_and_cars;
+mod settings_ui;
 mod skyscrapers;
 
 #[derive(Resource, Default)]
@@ -42,11 +47,6 @@ struct SceneStats {
 
 #[derive(Component)]
 struct StatsText;
-
-#[derive(Resource)]
-struct Settings {
-    move_cars: bool,
-}
 
 fn main() {
     App::new()
@@ -69,6 +69,7 @@ fn main() {
                     .into(),
                     ..default()
                 }),
+            FeathersPlugins,
             FreeCameraPlugin,
             WireframePlugin::default(),
             FpsOverlayPlugin {
@@ -90,14 +91,15 @@ fn main() {
                     },
                 },
             },
+            SettingsUiPlugin,
         ))
+        .insert_resource(UiTheme(create_dark_theme()))
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(GlobalAmbientLight::NONE)
         .insert_resource(WireframeConfig {
             global: false,
             default_color: WHITE.into(),
         })
-        .insert_resource(Settings { move_cars: false })
         .init_resource::<SceneStats>()
         .add_systems(
             Startup,
@@ -114,11 +116,7 @@ fn main() {
             ),
         )
         .add_systems(Startup, (setup_camera, spawn_stats_ui))
-        .add_systems(
-            Update,
-            (make_visible, update_settings, move_cars, update_stats_ui),
-        )
-        // .add_observer(generate_variations)
+        .add_systems(Update, (make_visible, move_cars, update_stats_ui))
         .run();
 }
 
@@ -132,50 +130,28 @@ fn make_visible(mut window: Single<&mut Window>, frames: Res<FrameCount>) {
     }
 }
 
-fn update_settings(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut wireframe_config: ResMut<WireframeConfig>,
-    mut settings: ResMut<Settings>,
-) {
-    if keyboard_input.just_pressed(KeyCode::KeyZ) {
-        wireframe_config.global = !wireframe_config.global;
-    }
-    if keyboard_input.just_pressed(KeyCode::KeyX) {
-        settings.move_cars = !settings.move_cars;
-    }
-}
-
 fn spawn_stats_ui(mut commands: Commands) {
     commands
-        .spawn(Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            ..default()
-        })
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(10.0),
+                left: Val::Px(10.0),
+                padding: UiRect::all(Val::Px(10.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.75)),
+        ))
         .with_children(|parent| {
-            parent
-                .spawn((
-                    Node {
-                        position_type: PositionType::Absolute,
-                        bottom: Val::Px(10.0),
-                        left: Val::Px(10.0),
-                        // margin: UiRect::all(Val::Px(25.0)),
-                        padding: UiRect::all(Val::Px(10.0)),
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.75)),
-                ))
-                .with_children(|parent| {
-                    parent.spawn((
-                        Text::new(""),
-                        TextFont {
-                            font_size: FontSize::Px(20.0),
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                        StatsText,
-                    ));
-                });
+            parent.spawn((
+                Text::new(""),
+                TextFont {
+                    font_size: FontSize::Px(20.0),
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                StatsText,
+            ));
         });
 }
 
@@ -244,7 +220,7 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
 
     commands.spawn((
         DirectionalLight {
-            shadow_maps_enabled: true,
+            shadow_maps_enabled: false,
             illuminance: light_consts::lux::RAW_SUNLIGHT,
             ..default()
         },
