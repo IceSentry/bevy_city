@@ -62,10 +62,7 @@ fn setup_settings_ui(mut commands: Commands) {
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Stretch,
                 justify_content: JustifyContent::Start,
-                // padding: UiRect::all(px(8)),
                 row_gap: px(8),
-                // width: percent(30),
-                // min_width: px(200),
                 ..default()
             },
             children![
