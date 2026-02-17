@@ -1,9 +1,6 @@
 # bevy_city
 
-This is a simple repo to test bevy with a procedural city.
+A procedurally generated city using assets from [kenney](https://kenney.nl)
 
-
-## Assets
-
-All the assets come from Kenney <https://kenney.nl/assets>
-
+This project was inspired by <https://flecs-hub.github.io/traffic/etc/>.
+Currently it doesn't do any traffic simulation but the goal is to have a similar simulation but using bevy_ecs.

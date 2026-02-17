@@ -4,11 +4,14 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { git = "https://github.com/bevyengine/bevy.git", rev = "e696fa75260d52129df53db4328aca64c068d613", default-features = false, features = [
-    "3d",
-    "free_camera",
-    "bevy_dev_tools",
-    "experimental_bevy_feathers"
+bevy = { git = "https://github.com/bevyengine/bevy.git", rev = "05cae875fe4dbcade81b7cfef13163532a884023", default-features = false, features = [
+  "3d",
+  "free_camera",
+  "bevy_dev_tools",
+  "experimental_bevy_feathers",
+  "https",
 ] }
+
+argh = "0.1.14"
 noise = "0.9.0"
 rand = "0.10.0"

@@ -1,39 +1,44 @@
 use core::f64;
 
-use bevy::anti_alias::taa::TemporalAntiAliasing;
-use bevy::camera::{Exposure, Hdr};
-use bevy::camera_controller::free_camera::{FreeCamera, FreeCameraPlugin};
-use bevy::color::palettes::css::WHITE;
-use bevy::dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig};
-use bevy::diagnostic::FrameCount;
-use bevy::feathers::FeathersPlugins;
-use bevy::feathers::dark_theme::create_dark_theme;
-use bevy::feathers::theme::UiTheme;
-use bevy::light::atmosphere::ScatteringMedium;
-use bevy::light::{Atmosphere, AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight};
-use bevy::pbr::AtmosphereSettings;
-use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
-use bevy::post_process::bloom::Bloom;
-use bevy::prelude::*;
-use bevy::render::RenderPlugin;
-use bevy::render::settings::{WgpuFeatures, WgpuSettings};
-use noise::{NoiseFn, OpenSimplex};
-use rand::rngs::SmallRng;
-use rand::{RngExt, SeedableRng};
-
-use crate::low_density::{LowDensityBuildings, load_low_density_buildings, spawn_low_density};
-use crate::medium_density::{
-    MediumDensityBuildings, load_medium_density_buildings, spawn_medium_density,
+use argh::FromArgs;
+use bevy::{
+    anti_alias::taa::TemporalAntiAliasing,
+    camera::{Exposure, Hdr},
+    camera_controller::free_camera::{FreeCamera, FreeCameraPlugin},
+    color::palettes::css::WHITE,
+    dev_tools::fps_overlay::{FpsOverlayConfig, FpsOverlayPlugin, FrameTimeGraphConfig},
+    diagnostic::FrameCount,
+    feathers::{FeathersPlugins, dark_theme::create_dark_theme, theme::UiTheme},
+    light::{
+        Atmosphere, AtmosphereEnvironmentMapLight, VolumetricFog, VolumetricLight,
+        atmosphere::ScatteringMedium,
+    },
+    pbr::{
+        AtmosphereSettings, ContactShadows,
+        wireframe::{WireframeConfig, WireframePlugin},
+    },
+    post_process::bloom::Bloom,
+    prelude::*,
+    render::{
+        RenderPlugin,
+        settings::{WgpuFeatures, WgpuSettings},
+    },
+    window::{PresentMode, WindowResolution},
+    winit::WinitSettings,
 };
-use crate::roads_and_cars::{RoadsAndCarsAssets, load_cars, move_cars, spawn_roads_and_cars};
-use crate::settings_ui::{Settings, SettingsUiPlugin};
-use crate::skyscrapers::{SkyscraperBuildings, load_skyscrapers, spawn_high_density};
 
-mod low_density;
-mod medium_density;
-mod roads_and_cars;
-mod settings_ui;
-mod skyscrapers;
+use noise::{NoiseFn, OpenSimplex};
+use rand::{RngExt, SeedableRng, rngs::SmallRng};
+
+use crate::{
+    assets::{CityAssets, load_assets},
+    generate_city::spawn_city,
+    settings::{Settings, setup_settings_ui},
+};
+
+mod assets;
+mod generate_city;
+mod settings;
 
 #[derive(Resource, Default)]
 struct SceneStats {
@@ -48,52 +53,68 @@ struct SceneStats {
 #[derive(Component)]
 struct StatsText;
 
+#[derive(FromArgs, Resource, Clone)]
+/// Config
+pub struct Args {
+    /// seed
+    #[argh(option, default = "42")]
+    seed: u64,
+
+    /// size
+    #[argh(option, default = "30")]
+    size: u32,
+}
+
 fn main() {
+    let args: Args = argh::from_env();
+
     App::new()
         .add_plugins((
-            DefaultPlugins
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "bevy_city".into(),
-                        resolution: (1920, 1080).into(),
-                        visible: false,
-                        ..default()
-                    }),
-                    ..default()
-                })
-                .set(RenderPlugin {
-                    render_creation: WgpuSettings {
-                        features: WgpuFeatures::POLYGON_MODE_LINE,
-                        ..default()
-                    }
-                    .into(),
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "bevy_city".into(),
+                    resolution: WindowResolution::new(1920, 1080).with_scale_factor_override(1.0),
+                    present_mode: PresentMode::AutoNoVsync,
+                    visible: false,
                     ..default()
                 }),
-            FeathersPlugins,
+                ..default()
+            }),
+            // .set(RenderPlugin {
+            //     render_creation: WgpuSettings {
+            //         features: WgpuFeatures::POLYGON_MODE_LINE,
+            //         ..default()
+            //     }
+            //     .into(),
+            //     ..default()
+            // }),
             FreeCameraPlugin,
+            FeathersPlugins,
             WireframePlugin::default(),
-            FpsOverlayPlugin {
-                config: FpsOverlayConfig {
-                    text_config: TextFont {
-                        font_size: FontSize::Px(32.0),
-                        ..default()
-                    },
-                    // We can also change color of the overlay
-                    text_color: WHITE.into(),
-                    refresh_interval: core::time::Duration::from_millis(100),
-                    enabled: true,
-                    frame_time_graph_config: FrameTimeGraphConfig {
-                        enabled: true,
-                        // The minimum acceptable fps
-                        min_fps: 30.0,
-                        // The target fps
-                        target_fps: 144.0,
-                    },
-                },
-            },
-            SettingsUiPlugin,
+            // FpsOverlayPlugin {
+            //     config: FpsOverlayConfig {
+            //         text_config: TextFont {
+            //             font_size: FontSize::Px(32.0),
+            //             ..default()
+            //         },
+            //         // We can also change color of the overlay
+            //         text_color: WHITE.into(),
+            //         refresh_interval: core::time::Duration::from_millis(100),
+            //         enabled: true,
+            //         frame_time_graph_config: FrameTimeGraphConfig {
+            //             enabled: true,
+            //             // The minimum acceptable fps
+            //             min_fps: 30.0,
+            //             // The target fps
+            //             target_fps: 144.0,
+            //         },
+            //     },
+            // },
         ))
+        .insert_resource(args.clone())
+        .init_resource::<Settings>()
         .insert_resource(UiTheme(create_dark_theme()))
+        .insert_resource(WinitSettings::continuous())
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(GlobalAmbientLight::NONE)
         .insert_resource(WireframeConfig {
@@ -104,19 +125,14 @@ fn main() {
         .add_systems(
             Startup,
             (
-                (
-                    load_low_density_buildings,
-                    load_medium_density_buildings,
-                    load_skyscrapers,
-                    load_ground_tiles,
-                    load_cars,
-                )
-                    .before(setup_city),
-                setup_city,
+                setup,
+                setup_settings_ui,
+                load_assets,
+                setup_city.after(load_assets),
             ),
         )
-        .add_systems(Startup, (setup_camera, spawn_stats_ui))
-        .add_systems(Update, (make_visible, move_cars, update_stats_ui))
+        .add_systems(Startup, (spawn_stats_ui))
+        .add_systems(Update, (make_visible, simulate_cars, update_stats_ui))
         .run();
 }
 
@@ -128,6 +144,38 @@ fn make_visible(mut window: Single<&mut Window>, frames: Res<FrameCount>) {
         // It will work, but it will have one white frame before it starts rendering
         window.visible = true;
     }
+}
+
+fn setup(mut commands: Commands, mut scattering_mediums: ResMut<Assets<ScatteringMedium>>) {
+    commands.spawn((
+        Camera3d::default(),
+        Hdr,
+        Transform::from_xyz(15.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
+        FreeCamera::default(),
+        Atmosphere::earthlike(scattering_mediums.add(ScatteringMedium::default())),
+        AtmosphereSettings::default(),
+        // The directional light illuminance used in this scene is
+        // quite bright, so raising the exposure compensation helps
+        // bring the scene to a nicer brightness range.
+        Exposure { ev100: 13.0 },
+        // Bloom gives the sun a much more natural look.
+        Bloom::NATURAL,
+        // Enables the atmosphere to drive reflections and ambient lighting (IBL) for this view
+        AtmosphereEnvironmentMapLight::default(),
+        Msaa::Off,
+        TemporalAntiAliasing::default(),
+        ContactShadows::default(),
+    ));
+
+    commands.spawn((
+        DirectionalLight {
+            shadow_maps_enabled: Settings::default().shadow_maps_enabled,
+            contact_shadows_enabled: Settings::default().contact_shadows_enabled,
+            illuminance: light_consts::lux::RAW_SUNLIGHT,
+            ..default()
+        },
+        Transform::from_xyz(1.0, 0.15, 1.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
 }
 
 fn spawn_stats_ui(mut commands: Commands) {
@@ -229,193 +277,49 @@ fn setup_camera(mut commands: Commands, mut scattering_mediums: ResMut<Assets<Sc
     ));
 }
 
-#[derive(Resource)]
-struct GroundTiles {
-    mesh: Handle<Mesh>,
-    default_material: Handle<StandardMaterial>,
-    grass_material: Handle<StandardMaterial>,
+fn setup_city(mut commands: Commands, assets: Res<CityAssets>, args: Res<Args>) {
+    spawn_city(&mut commands, &assets, args.seed, args.size);
 }
 
-fn load_ground_tiles(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    let mesh = asset_server.load(
-        GltfAssetLabel::Primitive {
-            mesh: 0,
-            primitive: 0,
-        }
-        .from_asset("ground_tile/tile-low.glb"),
-    );
-    // TODO use this once https://github.com/bevyengine/bevy/pull/22943 is merged
-    // let default_material: Handle<StandardMaterial> = asset_server.load(format!(
-    //     "ground_tile/tile-low.glb#{}/std",
-    //     GltfAssetLabel::DefaultMaterial
-    // ));
-    let white_material = materials.add(StandardMaterial::from_color(WHITE));
-    let grass_material = materials.add(StandardMaterial::from_color(Color::srgb_u8(97, 203, 139)));
-    commands.insert_resource(GroundTiles {
-        mesh,
-        default_material: white_material,
-        grass_material,
-    });
+#[derive(Component)]
+struct Road {
+    start: Vec3,
+    end: Vec3,
 }
 
-#[allow(clippy::too_many_arguments)]
-fn setup_city(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    roads_and_cars_assets: Res<RoadsAndCarsAssets>,
-    low_density_buildings: Res<LowDensityBuildings>,
-    medium_density_buildings: Res<MediumDensityBuildings>,
-    skyscrapers: Res<SkyscraperBuildings>,
-    ground_tile: Res<GroundTiles>,
-    mut stats: ResMut<SceneStats>,
+#[derive(Component)]
+struct Car {
+    offset: Vec3,
+    distance_traveled: f32,
+    dir: f32,
+}
+
+fn simulate_cars(
+    settings: Res<Settings>,
+    roads: Query<(&Road, &Transform, &Children), Without<Car>>,
+    mut cars: Query<(&mut Car, &mut Transform), Without<Road>>,
+    time: Res<Time>,
 ) {
-    let tree_small: Handle<Scene> = asset_server
-        .load(GltfAssetLabel::Scene(0).from_asset("trees/city_suburban/tree-small.glb"));
-    let tree_large: Handle<Scene> = asset_server
-        .load(GltfAssetLabel::Scene(0).from_asset("trees/city_suburban/tree-large.glb"));
+    if !settings.simulate_cars {
+        return;
+    }
+    let speed = 1.5;
 
-    let trees = [tree_small.clone(), tree_large.clone()];
+    for (road, _, children) in &roads {
+        for child in children {
+            let Ok((mut car, mut car_transform)) = cars.get_mut(*child) else {
+                continue;
+            };
 
-    let path_stones_long: Handle<Scene> = asset_server
-        .load(GltfAssetLabel::Scene(0).from_asset("city_suburban/path-stones-long.glb"));
+            car.distance_traveled += speed * time.delta_secs();
+            let road_len = (road.end - road.start).length();
+            if car.distance_traveled > road_len {
+                car.distance_traveled = 0.0;
+            }
+            let direction = (road.end - road.start).normalize() * car.dir;
 
-    let fence: Handle<Scene> =
-        asset_server.load(GltfAssetLabel::Scene(0).from_asset("city_suburban/fence.glb"));
-
-    let mut rng = SmallRng::seed_from_u64(42);
-    // TODO better noise
-    let noise = OpenSimplex::new(rng.random());
-
-    let mut spawn_city_block = |offset: Vec3| {
-        let noise_scale = 0.025;
-        let density = noise.get([
-            offset.x as f64 * noise_scale,
-            offset.z as f64 * noise_scale,
-            0.0,
-        ]) * 0.5
-            + 0.5;
-
-        let rural = 0.45;
-        let low_density = 0.6;
-        let medium_density = 0.7;
-
-        if density > rural {
-            spawn_roads_and_cars(
-                &mut commands,
-                &mut stats,
-                &mut rng,
-                offset,
-                &roads_and_cars_assets,
-            );
-        }
-
-        let ground_tile_scale = Vec3::new(4.5, 1.0, 3.0);
-
-        if density > rural && rng.random::<f32>() < 0.025 {
-            // park
-            commands.spawn((
-                Mesh3d(ground_tile.mesh.clone()),
-                MeshMaterial3d(ground_tile.grass_material.clone()),
-                Transform::from_translation(
-                    Vec3::new(0.5, -0.5005, 0.5) + ground_tile_scale / 2.0 + offset,
-                )
-                .with_scale(ground_tile_scale),
-            ));
-            return;
-        }
-
-        if density < rural {
-            let scale = ground_tile_scale + Vec3::new(1.0, 0.0, 1.0);
-            commands.spawn((
-                Mesh3d(ground_tile.mesh.clone()),
-                MeshMaterial3d(ground_tile.grass_material.clone()),
-                Transform::from_translation(Vec3::new(-0.5, -0.5005, -0.5) + scale / 2.0 + offset)
-                    .with_scale(scale),
-            ));
-        } else if density < low_density {
-            commands.spawn((
-                Mesh3d(ground_tile.mesh.clone()),
-                MeshMaterial3d(ground_tile.grass_material.clone()),
-                Transform::from_translation(
-                    Vec3::new(0.5, -0.5005, 0.5) + ground_tile_scale / 2.0 + offset,
-                )
-                .with_scale(ground_tile_scale),
-            ));
-
-            spawn_low_density(
-                &mut commands,
-                &mut stats,
-                &mut rng,
-                offset,
-                &low_density_buildings,
-                tree_small.clone(),
-                fence.clone(),
-            );
-        } else if density < medium_density {
-            commands.spawn((
-                Mesh3d(ground_tile.mesh.clone()),
-                MeshMaterial3d(ground_tile.default_material.clone()),
-                Transform::from_translation(
-                    Vec3::new(0.5, -0.5005, 0.5) + ground_tile_scale / 2.0 + offset,
-                )
-                .with_scale(ground_tile_scale),
-            ));
-
-            spawn_medium_density(
-                &mut commands,
-                &mut stats,
-                &mut rng,
-                offset,
-                &medium_density_buildings,
-                &trees,
-                path_stones_long.clone(),
-            );
-        } else {
-            commands.spawn((
-                Mesh3d(ground_tile.mesh.clone()),
-                MeshMaterial3d(ground_tile.default_material.clone()),
-                Transform::from_translation(
-                    Vec3::new(0.5, -0.5005, 0.5) + ground_tile_scale / 2.0 + offset,
-                )
-                .with_scale(ground_tile_scale),
-            ));
-
-            spawn_high_density(&mut commands, &mut stats, &skyscrapers, &mut rng, offset);
-        }
-    };
-
-    let size = 20;
-    for x in -size..=size {
-        for z in -size..=size {
-            spawn_city_block(Vec3::new(x as f32 * 5.5, 0.0, z as f32 * 4.0));
+            let progress = car.distance_traveled / road_len;
+            car_transform.translation = (road.start + car.offset) + direction * road_len * progress;
         }
     }
-
-    // {
-    //     let mut density_min = f64::MAX;
-    //     let mut density_max = f64::MIN;
-    //
-    //     use std::fmt::Write;
-    //     let size = 512;
-    //     let mut image = String::new();
-    //     let _ = writeln!(image, "P3");
-    //     let _ = writeln!(image, "{} {}", size, size);
-    //     let _ = writeln!(image, "255");
-    //     let scale = 0.005;
-    //     for y in 0..size {
-    //         for x in 0..size {
-    //             let density = perlin.get([x as f64 * scale, y as f64 * scale, 0.0]) * 0.5 + 0.5;
-    //             density_min = density_min.min(density);
-    //             density_max = density_max.max(density);
-    //             let _ = writeln!(image, "{d} {d} {d}", d = (density * 255.99) as u8);
-    //         }
-    //         // let _ = writeln!(image);
-    //     }
-    //     let _ = std::fs::write("./density.ppm", image);
-    //     println!("density range: {density_min}..{density_max}");
-    // }
 }
